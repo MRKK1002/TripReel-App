@@ -1,0 +1,540 @@
+import React, { useState } from "react";
+import { 
+  View, 
+  Text, 
+  Image, 
+  ScrollView, 
+  TextInput, 
+  TouchableOpacity, 
+  Dimensions, 
+  StyleSheet 
+} from "react-native";
+import banner from './../assets/Gemini_Generated_Image_v5d497v5d497v5d4.png';
+
+const { width } = Dimensions.get('window');
+
+const HomeScreen = () => {
+  const [searchText, setSearchText] = useState('');
+
+  const categories = [
+    { id: 3, name: "Guide", icon: "🧭" },
+    { id: 2, name: "Companion", icon: "👫" },
+    { id: 1, name: "Packages", icon: "🧳" },
+    { id: 4, name: "Hotels", icon: "🏨" },
+  ];
+
+  const thaiDestinations = [
+    { id: 1, name: "Bangkok", image: "https://images.unsplash.com/photo-1578167635648-df79e1565908?q=80&w=1770&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", rating: 4.8 },
+    { id: 2, name: "Phuket", image: "https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?q=80&w=1701&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", rating: 4.9 },
+    { id: 3, name: "Chiang Mai", image: "https://images.unsplash.com/photo-1578157695179-d7b7ddeb2f53?q=80&w=2231&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", rating: 4.7 },
+    { id: 4, name: "Krabi", image: "https://images.unsplash.com/photo-1587691254941-bbd1faa13154?q=80&w=1770&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", rating: 4.6 },
+    { id: 5, name: "Koh Samui", image: "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?q=80&w=1770&auto=format&fit=crop&ixlib=rb-4.1.0", rating: 4.5 },
+    { id: 6, name: "Ayutthaya", image: "https://images.unsplash.com/photo-1580977957630-bf69b7e0c8f9?q=80&w=1770&auto=format&fit=crop&ixlib=rb-4.1.0", rating: 4.4 },
+  ];
+
+  const featuredPackages = [
+    { id: 1, title: "Romantic Phuket Getaway", price: "$499", originalPrice: "$699", image: "https://plus.unsplash.com/premium_photo-1670002464796-3a3136fe8808?q=80&w=1770&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", duration: "5 days", rating: 4.8, discount: "29% OFF" },
+    { id: 2, title: "Chiang Mai Adventure", price: "$399", originalPrice: "$549", image: "https://images.unsplash.com/photo-1611605834890-a4f92858c823?q=80&w=1626&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", duration: "4 days", rating: 4.7, discount: "27% OFF" },
+    { id: 3, title: "Bangkok City Explorer", price: "$299", originalPrice: "$399", image: "https://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1770&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", duration: "3 days", rating: 4.6, discount: "25% OFF" },
+  ];
+
+  const trendingExperiences = [
+    { id: 1, title: "Thai Cooking Class", image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?q=80&w=1770&auto=format&fit=crop", price: "$45", rating: 4.9, duration: "3 hours" },
+    { id: 2, title: "Elephant Sanctuary", image: "https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?q=80&w=1771&auto=format&fit=crop", price: "$85", rating: 4.8, duration: "Full day" },
+    { id: 3, title: "Temple Hopping Tour", image: "https://images.unsplash.com/photo-1563492065421-4c3abbec2651?q=80&w=1770&auto=format&fit=crop", price: "$35", rating: 4.7, duration: "4 hours" },
+    { id: 4, title: "Island Hopping", image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=1770&auto=format&fit=crop", price: "$120", rating: 4.9, duration: "Full day" },
+  ];
+
+  const testimonials = [
+    { id: 1, name: "Sarah Johnson", location: "New York", rating: 5, text: "Amazing trip to Thailand! Everything was perfectly organized.", avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b647?q=80&w=200&h=200&auto=format&fit=crop" },
+    { id: 2, name: "Mike Chen", location: "California", rating: 5, text: "Best travel experience ever. Highly recommend RoamWe!", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&h=200&auto=format&fit=crop" },
+    { id: 3, name: "Emma Davis", location: "London", rating: 5, text: "Professional service and unforgettable memories.", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&h=200&auto=format&fit=crop" },
+  ];
+
+  const quickActions = [
+    { id: 1, title: "Flight Deals", icon: "✈️", color: "#DBEAFE", textColor: "#1E40AF" },
+    { id: 2, title: "Hotel Offers", icon: "🏨", color: "#D1FAE5", textColor: "#065F46" },
+    { id: 3, title: "Car Rental", icon: "🚗", color: "#E9D5FF", textColor: "#6B21A8" },
+    { id: 4, title: "Travel Insurance", icon: "🛡️", color: "#FED7AA", textColor: "#C2410C" },
+  ];
+
+  const renderStars = (rating) => {
+    return '⭐'.repeat(Math.floor(rating)) + (rating % 1 !== 0 ? '⭐' : '');
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <Text style={styles.logo}>RoamWe</Text>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity style={styles.iconButton}>
+              <Text style={styles.icon}>🔔</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton}>
+              <Text style={styles.icon}>👤</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <TextInput
+          placeholder="Search destinations, hotels, experiences..."
+          placeholderTextColor="#9CA3AF"
+          value={searchText}
+          onChangeText={setSearchText}
+          style={styles.searchInput}
+        />
+      </View>
+
+      {/* Banner */}
+      <View style={styles.bannerContainer}>
+        <View style={styles.bannerWrapper}>
+          <Image source={banner} style={styles.bannerImage} />
+          <View style={styles.hotDealsBadge}>
+            <Text style={styles.hotDealsText}>HOT DEALS</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Quick Actions */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.quickActionsRow}>
+          {quickActions.map((action) => (
+            <TouchableOpacity
+              key={action.id}
+              style={[styles.quickActionCard, { backgroundColor: action.color }]}
+            >
+              <Text style={styles.quickActionIcon}>{action.icon}</Text>
+              <Text style={[styles.quickActionText, { color: action.textColor }]}>
+                {action.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Categories */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Explore Categories</Text>
+        <View style={styles.categoriesRow}>
+          {categories.map((item) => (
+            <TouchableOpacity key={item.id} style={styles.categoryCard}>
+              <Text style={styles.categoryIcon}>{item.icon}</Text>
+              <Text style={styles.categoryText}>{item.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Thailand Popular Destinations */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Popular in Thailand</Text>
+          <TouchableOpacity>
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+          {thaiDestinations.map((item) => (
+            <TouchableOpacity key={item.id} style={styles.destinationCard}>
+              <Image source={{ uri: item.image }} style={styles.destinationImage} />
+              <View style={styles.destinationInfo}>
+                <Text style={styles.destinationName}>{item.name}</Text>
+                <View style={styles.ratingRow}>
+                  <Text style={styles.starIcon}>⭐</Text>
+                  <Text style={styles.ratingText}>{item.rating}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Featured Packages */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Featured Packages</Text>
+          <TouchableOpacity>
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
+        {featuredPackages.map((pkg) => (
+          <TouchableOpacity key={pkg.id} style={styles.packageCard}>
+            <View style={styles.packageImageWrapper}>
+              <Image source={{ uri: pkg.image }} style={styles.packageImage} />
+              <View style={styles.discountBadge}>
+                <Text style={styles.discountText}>{pkg.discount}</Text>
+              </View>
+            </View>
+            <View style={styles.packageInfo}>
+              <Text style={styles.packageTitle}>{pkg.title}</Text>
+              <Text style={styles.packageDetails}>
+                {pkg.duration} • {renderStars(pkg.rating)} {pkg.rating}
+              </Text>
+              <View style={styles.priceRow}>
+                <Text style={styles.currentPrice}>{pkg.price}</Text>
+                <Text style={styles.originalPrice}>{pkg.originalPrice}</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.bookButton}>
+              <Text style={styles.bookButtonText}>Book</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Footer */}
+      <View style={styles.footer}>
+        <View style={styles.footerContent}>
+          <Text style={styles.footerLogo}>RoamWe</Text>
+          <Text style={styles.footerDescription}>
+            Your trusted travel companion for unforgettable experiences
+          </Text>
+        </View>
+        <View style={styles.footerLinks}>
+          <TouchableOpacity><Text style={styles.footerLink}>About</Text></TouchableOpacity>
+          <TouchableOpacity><Text style={styles.footerLink}>Support</Text></TouchableOpacity>
+          <TouchableOpacity><Text style={styles.footerLink}>Terms</Text></TouchableOpacity>
+          <TouchableOpacity><Text style={styles.footerLink}>Privacy</Text></TouchableOpacity>
+        </View>
+        <Text style={styles.copyright}>© 2024 RoamWe. All rights reserved.</Text>
+      </View>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 48,
+    paddingBottom: 24,
+    backgroundColor: '#000',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  logo: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  iconButton: {
+    padding: 8,
+  },
+  icon: {
+    fontSize: 20,
+    color: '#FFFFFF',
+  },
+  searchInput: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  bannerContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  bannerWrapper: {
+    position: 'relative',
+  },
+  bannerImage: {
+    width: '100%',
+    height: 192,
+    borderRadius: 16,
+  },
+  hotDealsBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#EF4444',
+    borderRadius: 16,
+  },
+  hotDealsText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  section: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  viewAllText: {
+    color: '#2563EB',
+    fontWeight: '500',
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quickActionCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 16,
+    marginHorizontal: 4,
+    borderRadius: 16,
+  },
+  quickActionIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  quickActionText: {
+    fontSize: 10,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  categoriesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  categoryCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    marginHorizontal: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  categoryIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  horizontalScroll: {
+    paddingLeft: 16,
+  },
+  destinationCard: {
+    width: 176,
+    marginRight: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  destinationImage: {
+    width: '100%',
+    height: 128,
+  },
+  destinationInfo: {
+    padding: 12,
+  },
+  destinationName: {
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  starIcon: {
+    color: '#F59E0B',
+    marginRight: 4,
+  },
+  ratingText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  packageCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  packageImageWrapper: {
+    position: 'relative',
+    marginRight: 16,
+  },
+  packageImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 12,
+  },
+  discountBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#EF4444',
+    borderRadius: 16,
+  },
+  discountText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  packageInfo: {
+    flex: 1,
+  },
+  packageTitle: {
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  packageDetails: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  currentPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#10B981',
+    marginRight: 8,
+  },
+  originalPrice: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
+  },
+  bookButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#2563EB',
+    borderRadius: 12,
+  },
+  bookButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  footer: {
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+    backgroundColor: '#1F2937',
+  },
+  footerContent: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  footerLogo: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  footerDescription: {
+    textAlign: 'center',
+    color: '#D1D5DB',
+    marginBottom: 16,
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+    marginBottom: 16,
+  },
+  footerLink: {
+    color: '#FFFFFF',
+  },
+  copyright: {
+    fontSize: 12,
+    textAlign: 'center',
+    color: '#9CA3AF',
+  },
+});
+
+export default HomeScreen;
+
+
+
+
+
+
+import React from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { NavigationContainer } from '@react-navigation/native';
+import HomeScreen from './screens/HomeScreen';
+import SearchScreen from './screens/SearchScreen';
+
+const Tab = createBottomTabNavigator();
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Tab.Navigator
+        screenOptions={{
+          tabBarActiveTintColor: '#2563EB',
+          tabBarInactiveTintColor: '#6B7280',
+          tabBarStyle: {
+            backgroundColor: '#FFFFFF',
+            borderTopWidth: 1,
+            borderTopColor: '#E5E7EB',
+          }
+        }}
+      >
+        <Tab.Screen 
+          name="Home" 
+          component={HomeScreen}
+          options={{
+            tabBarIcon: () => '🏠',
+          }}
+        />
+        <Tab.Screen 
+          name="Search" 
+          component={SearchScreen}
+          options={{
+            tabBarIcon: () => '🔍',
+          }}
+        />
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+}

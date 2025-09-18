@@ -1,4 +1,4 @@
-package com.travelapp
+package com.RoamWe
 
 import android.app.Application
 import com.facebook.react.PackageList

@@ -1,523 +1,247 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
-  ScrollView,
   Image,
+  ScrollView,
   TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
   StatusBar,
-  Dimensions,
+  StyleSheet,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import {
+  UserCircle,
+  Info,
+  FileText,
+  LogIn,
+  ChevronRight,
+} from 'lucide-react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import './../../android/app/src/utils/globalFont.js';
 
-const { width } = Dimensions.get('window');
+const menuItems = [
+  {
+    id: 1,
+    title: 'Account Settings',
+    description: 'Update account details',
+    icon: UserCircle,
+    route: 'AccountSettings',
+  },
+  {
+    id: 2,
+    title: 'Get Help',
+    description: 'Support & Account Details',
+    icon: Info,
+    route: 'Help',
+  },
+  {
+    id: 3,
+    title: 'Privacy',
+    description: 'Support & Account Details',
+    icon: FileText,
+    route: 'Privacy',
+  },
+  {
+    id: 4,
+    title: 'Payment Help',
+    description: 'Payment related issues',
+    icon: FileText,
+    route: 'PaymentHelp',
+  },
+];
 
 const ProfileScreen = () => {
-  const [activeTab, setActiveTab] = useState('trips');
+  const navigation = useNavigation();
 
-  const userStats = [
-    { label: 'Countries\nVisited', value: '23' },
-    { label: 'Cities\nExplored', value: '47' },
-    { label: 'Travel\nDays', value: '156' }
-  ];
-
-  const recentTrips = [
-    { 
-      id: 1, 
-      destination: 'Santorini, Greece', 
-      image: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=400&h=300&fit=crop',
-      dates: 'Aug 2024',
-      rating: 5
-    },
-    { 
-      id: 2, 
-      destination: 'Kyoto, Japan', 
-      image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400&h=300&fit=crop',
-      dates: 'Jun 2024',
-      rating: 5
-    },
-    { 
-      id: 3, 
-      destination: 'Machu Picchu, Peru', 
-      image: 'https://images.unsplash.com/photo-1587595431973-160d0d94add1?w=400&h=300&fit=crop',
-      dates: 'Mar 2024',
-      rating: 4
-    }
-  ];
-
-  const badges = [
-    { name: 'Explorer', icon: '🌍', description: 'Visited 20+ countries' },
-    { name: 'Photographer', icon: '📸', description: 'Shared 100+ photos' },
-    { name: 'Foodie', icon: '🍜', description: 'Tried local cuisine' },
-    { name: 'Adventurer', icon: '🏔️', description: 'Completed adventures' }
-  ];
-
-  const wishlistItems = [
-    'Maldives',
-    'Northern Lights, Iceland', 
-    'Safari in Kenya',
-    'Great Wall of China'
-  ];
-
-  const renderStars = (rating) => {
-    return [...Array(5)].map((_, index) => (
-      <Text key={index} style={styles.star}>
-        {index < rating ? '★' : '☆'}
-      </Text>
-    ));
+  const handleLogout = () => {
+    navigation.navigate('Login');
   };
 
-  const renderTrips = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent Trips</Text>
-        <TouchableOpacity>
-          <Text style={styles.viewAllText}>View All</Text>
-        </TouchableOpacity>
-      </View>
-      
-      {recentTrips.map((trip) => (
-        <View key={trip.id} style={styles.tripCard}>
-          <Image source={{ uri: trip.image }} style={styles.tripImage} />
-          <View style={styles.tripDateBadge}>
-            <Text style={styles.tripDateText}>{trip.dates}</Text>
-          </View>
-          
-          <View style={styles.tripInfo}>
-            <Text style={styles.tripDestination}>{trip.destination}</Text>
-            <View style={styles.ratingContainer}>
-              <View style={styles.starsContainer}>
-                {renderStars(trip.rating)}
-              </View>
-              <Text style={styles.reviewText}>Amazing experience!</Text>
-            </View>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-
-  const renderBadges = () => (
-    <View style={styles.tabContent}>
-      <Text style={styles.sectionTitle}>Travel Badges</Text>
-      
-      <View style={styles.badgesGrid}>
-        {badges.map((badge, index) => (
-          <View key={index} style={styles.badgeCard}>
-            <Text style={styles.badgeIcon}>{badge.icon}</Text>
-            <Text style={styles.badgeName}>{badge.name}</Text>
-            <Text style={styles.badgeDescription}>{badge.description}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-
-  const renderWishlist = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Dream Destinations</Text>
-        <TouchableOpacity>
-          <Text style={styles.viewAllText}>Add New</Text>
-        </TouchableOpacity>
-      </View>
-      
-      {wishlistItems.map((destination, index) => (
-        <View key={index} style={styles.wishlistItem}>
-          <View style={styles.wishlistLeft}>
-            <Text style={styles.locationIcon}>📍</Text>
-            <Text style={styles.wishlistDestination}>{destination}</Text>
-          </View>
-          <Text style={styles.heartIcon}>❤️</Text>
-        </View>
-      ))}
-    </View>
-  );
+  const handleEditProfile = () => {
+    navigation.navigate('EditProfile');
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
-      
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <SafeAreaProvider style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Text style={styles.actionIcon}>⚙️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Text style={styles.actionIcon}>📤</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.profileSection}>
-            <View style={styles.profileImageContainer}>
-              <Image 
-                source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face' }}
-                style={styles.profileImage}
-              />
-              <TouchableOpacity style={styles.cameraButton}>
-                <Text style={styles.cameraIcon}>📷</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.userName}>Sarah Chen</Text>
-            <Text style={styles.userLocation}>📍 San Francisco, CA</Text>
-            
-            <TouchableOpacity style={styles.editButton}>
-              <Text style={styles.editButtonText}>✏️ Edit Profile</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.headerTitle}>Profile</Text>
         </View>
 
-        {/* Stats Card */}
-        <View style={styles.statsCard}>
-          <View style={styles.statsRow}>
-            {userStats.map((stat, index) => (
-              <View key={index} style={styles.statItem}>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            ))}
+        {/* Profile Info */}
+        <View style={styles.profileSection}>
+          <View style={styles.avatarWrapper}>
+            <Image
+              source={{
+                uri: 'https://randomuser.me/api/portraits/women/68.jpg',
+              }}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
           </View>
+
+          <Text style={styles.name}>Lauriane Mckinney</Text>
+          <Text style={styles.location}>Goa, India</Text>
+
+          <TouchableOpacity
+            onPress={handleEditProfile}
+            style={styles.editButton}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.editButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Navigation Tabs */}
-        <View style={styles.tabsContainer}>
-          <View style={styles.tabsRow}>
-            {[
-              { key: 'trips', label: 'Trips', icon: '✈️' },
-              { key: 'badges', label: 'Badges', icon: '⭐' },
-              { key: 'wishlist', label: 'Wishlist', icon: '❤️' }
-            ].map((tab) => (
+        {/* Menu Items */}
+        <View style={styles.menuSection}>
+          {menuItems.map(item => {
+            const IconComponent = item.icon;
+            return (
               <TouchableOpacity
-                key={tab.key}
-                onPress={() => setActiveTab(tab.key)}
-                style={[
-                  styles.tab,
-                  activeTab === tab.key && styles.activeTab
-                ]}
+                key={item.id}
+                style={styles.menuRow}
+                onPress={() => navigation.navigate(item.route)}
+                activeOpacity={0.7}
               >
-                <Text style={styles.tabIcon}>{tab.icon}</Text>
-                <Text style={[
-                  styles.tabText,
-                  activeTab === tab.key && styles.activeTabText
-                ]}>
-                  {tab.label}
-                </Text>
+                <View style={styles.iconBox}>
+                  <IconComponent size={20} color="#4B5563" />
+                </View>
+                <View style={styles.menuText}>
+                  <Text style={styles.menuTitle}>{item.title}</Text>
+                  <Text style={styles.menuDesc}>{item.description}</Text>
+                </View>
+                <ChevronRight size={18} color="#9CA3AF" />
               </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+            );
+          })}
 
-        {/* Tab Content */}
-        {activeTab === 'trips' && renderTrips()}
-        {activeTab === 'badges' && renderBadges()}
-        {activeTab === 'wishlist' && renderWishlist()}
+          {/* Logout Row */}
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconBox}>
+              <LogIn size={20} color="#4B5563" />
+            </View>
+            <View style={styles.menuText}>
+              <Text style={styles.menuTitle}>Logout</Text>
+            </View>
+            <ChevronRight size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaProvider>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   header: {
-    backgroundColor: '#4F46E5',
-    paddingTop: 20,
-    paddingBottom: 60,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  actionButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 20,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
+    paddingTop: 52,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
   },
-  actionIcon: {
-    fontSize: 18,
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
   },
   profileSection: {
     alignItems: 'center',
+    paddingTop: 28,
+    paddingBottom: 8,
+    paddingHorizontal: 24,
   },
-  profileImageContainer: {
-    position: 'relative',
+  avatarWrapper: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    overflow: 'hidden',
+    backgroundColor: '#E5E7EB',
   },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 4,
-    borderColor: 'white',
+  avatar: {
+    width: '100%',
+    height: '100%',
   },
-  cameraButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: -5,
-    width: 30,
-    height: 30,
-    backgroundColor: 'white',
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  name: {
+    marginTop: 14,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
   },
-  cameraIcon: {
-    fontSize: 16,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    marginTop: 15,
-  },
-  userLocation: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 5,
+  location: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#9CA3AF',
   },
   editButton: {
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
-    marginTop: 20,
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
   },
   editButtonText: {
-    color: '#4F46E5',
+    fontSize: 14,
     fontWeight: '600',
-    fontSize: 16,
+    color: '#111827',
   },
-  statsCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    marginTop: -30,
-    borderRadius: 15,
-    padding: 25,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+  menuSection: {
+    marginTop: 28,
+    paddingHorizontal: 16,
+    gap: 10,
   },
-  statsRow: {
+  menuRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statItem: {
     alignItems: 'center',
-    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 5,
-    lineHeight: 16,
-  },
-  tabsContainer: {
-    marginHorizontal: 20,
-    marginTop: 25,
-  },
-  tabsRow: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+  iconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    // backgroundColor: '#E5E7EB',
     alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'center',
   },
-  activeTab: {
-    backgroundColor: '#4F46E5',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  tabIcon: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  activeTabText: {
-    color: 'white',
-  },
-  tabContent: {
-    padding: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  viewAllText: {
-    fontSize: 14,
-    color: '#4F46E5',
-    fontWeight: '500',
-  },
-  tripCard: {
-    backgroundColor: 'white',
-    borderRadius: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  tripImage: {
-    width: '100%',
-    height: 200,
-  },
-  tripDateBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  tripDateText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  tripInfo: {
-    padding: 15,
-  },
-  tripDestination: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    marginRight: 8,
-  },
-  star: {
-    fontSize: 16,
-    color: '#FCD34D',
-  },
-  reviewText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  badgesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  badgeCard: {
-    width: '48%',
-    backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  badgeIcon: {
-    fontSize: 30,
-    marginBottom: 10,
-  },
-  badgeName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 5,
-    textAlign: 'center',
-  },
-  badgeDescription: {
-    fontSize: 10,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  wishlistItem: {
-    backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  wishlistLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  menuText: {
     flex: 1,
+    marginLeft: 12,
   },
-  locationIcon: {
-    fontSize: 18,
-    marginRight: 12,
+  menuTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
   },
-  wishlistDestination: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1F2937',
-  },
-  heartIcon: {
-    fontSize: 18,
+  menuDesc: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
 });
 

@@ -1,4 +1,4 @@
-package com.RoamWe
+package com.tripreel.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

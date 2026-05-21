@@ -1,36 +1,49 @@
-import React, { useEffect } from "react";
-import { Image, View, Dimensions, StatusBar } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useEffect, useRef } from 'react';
+import {
+  Image,
+  View,
+  Dimensions,
+  StatusBar,
+  ActivityIndicator,
+} from 'react-native';
+import { useAuth } from '../context/AuthContext';
+import './../../android/app/src/utils/globalFont.js';
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = Dimensions.get('window');
 
 const SplashScreen = ({ navigation }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.replace("Slider"); // redirect after splash
-    }, 3000);
+  const { isAuthenticated } = useAuth();
+  const timerRef = useRef(null);
 
-    return () => clearTimeout(timer);
-  }, [navigation]);
+  useEffect(() => {
+    timerRef.current = setTimeout(() => {
+      if (isAuthenticated) {
+        navigation.replace('Main');
+      } else {
+        navigation.replace('Welcome');
+      }
+    }, 1200);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [isAuthenticated, navigation]);
 
   return (
-   <SafeAreaView style={{ flex: 1, backgroundColor: '#1b2b51' }}>
-         <StatusBar
-           barStyle="light-content"
-           backgroundColor="#1b2b51"  // black status bar
-           translucent={false}     // content stays below
-         />
-      <View className="items-center justify-center flex-1 bg-white">
-        <Image
-          source={require("../assets/logo_new_bg.png")}
-          style={{
-            width: width * 0.8, // 60% of screen width
-            height: width * 0.8, // maintain square ratio
-            resizeMode: "contain",
-          }}
-        />
+    <View style={{ flex: 1 }}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+      />
+      <Image
+        source={require('../assets/splash.png')}
+        style={{ width, height, resizeMode: 'cover' }}
+      />
+      <View style={{ position: 'absolute', bottom: 50, alignSelf: 'center' }}>
+        <ActivityIndicator size="large" color="#ffffff" />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

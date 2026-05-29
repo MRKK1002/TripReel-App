@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://192.168.29.175:5000/api';
+const BASE_URL = 'http://192.168.1.18:5000/api';
+export const SERVER_URL = 'http://192.168.1.18:5000';
 
 const api = axios.create({
     baseURL: BASE_URL,
@@ -40,6 +41,18 @@ export const packagesAPI = {
     getByCategory: (category, limit = 5) =>
         api.get('/packages', { params: { category, limit } }),
     getById: id => api.get(`/packages/${id}`),
+};
+
+// Popular Destinations endpoints
+export const destinationsAPI = {
+    getAll: (params = {}) => api.get('/popular-destinations', { params }),
+    getById: id => api.get(`/popular-destinations/${id}`),
+};
+
+// Experiences endpoints
+export const experiencesAPI = {
+    getAll: (params = {}) => api.get('/experiences', { params }),
+    getById: id => api.get(`/experiences/${id}`),
 };
 
 // Reel endpoints (public — only active reels)

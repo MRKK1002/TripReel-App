@@ -233,7 +233,7 @@ const LoginScreen = () => {
           </TouchableOpacity>
 
           {/* Divider */}
-          <View
+          {/* <View
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -247,10 +247,10 @@ const LoginScreen = () => {
               or continue with
             </Text>
             <View style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }} />
-          </View>
+          </View> */}
 
           {/* Google Button */}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -268,7 +268,7 @@ const LoginScreen = () => {
             <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151' }}>
               Continue with Google
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* Register Link */}
           <View style={{ flexDirection: 'row', justifyContent: 'center' }}>

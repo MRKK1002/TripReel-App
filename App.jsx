@@ -236,19 +236,9 @@ export default function App() {
               options={{ headerShown: false }}
             />
             <Stack.Screen
-              name="Buddy"
-              component={BuddyScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
               name="PackageDetails"
               component={PackageDetailScreen}
-              options={{ title: 'Package Details' }}
-            />
-            <Stack.Screen
-              name="BuddyDetails"
-              component={BuddyDetailsScreen}
-              options={{ title: 'Buddy Details' }}
+              options={{ headerShown: false }}
             />
 
             <Stack.Screen

@@ -16,7 +16,14 @@ import Video from 'react-native-video';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import './../../android/app/src/utils/globalFont.js';
-import { packagesAPI, reelsAPI } from '../services/api';
+import { packagesAPI, reelsAPI, SERVER_URL } from '../services/api';
+
+// Resolve relative /uploads/... paths to full URLs
+const resolveImage = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  return `${SERVER_URL}${url}`;
+};
 import { Search, ChevronRight, Star, Heart, X, Play } from 'lucide-react-native';
 
 // ─── Recently Viewed — static local history (no backend yet) ─────────────────
@@ -52,10 +59,16 @@ const HomeScreen = () => {
 
       const allPackages = pkgRes.data?.packages || [];
 
+      // Resolve image URLs (backend returns relative /uploads/... paths)
+      const resolved = allPackages.map(pkg => ({
+        ...pkg,
+        image_url: resolveImage(pkg.image_url),
+        images: (pkg.images || []).map(resolveImage).filter(Boolean),
+      }));
+
       // Group packages by their `category` field, max 5 per category
-      // Order of categories follows first-seen order in the response
       const map = {};
-      for (const pkg of allPackages) {
+      for (const pkg of resolved) {
         const cat = (pkg.category || '').trim();
         if (!cat) continue;                   // skip uncategorised packages
         if (!map[cat]) map[cat] = [];
@@ -253,9 +266,11 @@ const HomeScreen = () => {
           categoryEntries.map(([categoryName, packages]) => (
             <View key={categoryName} style={{ paddingHorizontal: 16, paddingVertical: 24, marginTop: 2, backgroundColor: '#fff' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <Text style={styles.sectionHeading}>{categoryName}</Text>
+                <Text style={styles.sectionHeading}>
+                  {categoryName === 'Curated Packages' ? 'Current Packages' : categoryName}
+                </Text>
                 <TouchableOpacity
-                  onPress={() => navigation.navigate('PackageDetails', { categoryName })}
+                  onPress={() => navigation.navigate('CuratedPackages', { categoryName })}
                   style={{ flexDirection: 'row', alignItems: 'center' }}
                 >
                   <ChevronRight size={16} color="#1F8A70" />

@@ -428,13 +428,9 @@ const HomeScreen = () => {
       }));
 
       const map = {};
-      for (const pkg of allPkgs) {
-        // Priority: category → approvedCategory → 'Curated Packages' as fallback
-        const cat =
-          (pkg.category || pkg.approvedCategory || '').trim() ||
-          'Curated Packages';
-        if (!map[cat]) map[cat] = [];
-        if (map[cat].length < 5) map[cat].push(pkg);
+      // Put ALL packages in one "Curated Packages" section on home (max 5 shown)
+      if (allPkgs.length > 0) {
+        map['Curated Packages'] = allPkgs.slice(0, 5);
       }
       setCategoryMap(map);
 

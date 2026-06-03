@@ -51,23 +51,9 @@ const CuratedPackagesScreen = () => {
   const fetchPackages = useCallback(async () => {
     try {
       setError('');
-      const params = { limit: 100 };
-      // Only pass category filter if it's a real DB category (not our fallback label)
-      if (categoryName && categoryName !== 'Curated Packages') {
-        params.category = categoryName;
-      }
-      const res = await packagesAPI.getAll(params);
-      let pkgs = res.data?.packages || [];
-
-      // If we're in the fallback "Curated Packages" group,
-      // filter to only packages that have no category set
-      if (categoryName === 'Curated Packages') {
-        pkgs = pkgs.filter(
-          p => !(p.category || p.approvedCategory || '').trim(),
-        );
-      }
-
-      setPackages(pkgs);
+      // Always fetch ALL approved packages — show everything
+      const res = await packagesAPI.getAll({ limit: 200 });
+      setPackages(res.data?.packages || []);
     } catch (err) {
       setError('Failed to load packages. Pull down to retry.');
       console.warn('CuratedPackages fetch error:', err.message);
@@ -284,11 +270,7 @@ const CuratedPackagesScreen = () => {
         <Text
           style={{ fontSize: 18, fontWeight: '700', color: '#111827', flex: 1 }}
         >
-          {categoryName === 'Curated Packages' ||
-          categoryName === 'Current Packages' ||
-          !categoryName
-            ? 'Current Packages'
-            : categoryName}
+          Curated Packages
         </Text>
         <Text style={{ fontSize: 13, color: '#6B7280' }}>
           {filtered.length} packages

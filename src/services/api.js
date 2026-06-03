@@ -56,7 +56,19 @@ export const packagesAPI = {
   getAll: (params = {}) => api.get('/packages', { params }),
   getByCategory: (category, limit = 5) =>
     api.get('/packages', { params: { category, limit } }),
+  // Popular = sorted by avgRating descending
+  getPopular: (limit = 10) =>
+    api.get('/packages', { params: { sortBy: 'rating_desc', limit } }),
   getById: id => api.get(`/packages/${id}`),
+};
+
+// Review endpoints
+export const reviewsAPI = {
+  getForPackage: (packageId, params = {}) =>
+    api.get(`/reviews/${packageId}`, { params }),
+  getMyReview: packageId => api.get(`/reviews/my/${packageId}`),
+  create: data => api.post('/reviews', data),
+  delete: id => api.delete(`/reviews/${id}`),
 };
 
 // Popular Destinations endpoints

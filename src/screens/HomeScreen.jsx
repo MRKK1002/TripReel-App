@@ -28,7 +28,6 @@ import {
 } from 'lucide-react-native';
 import {
   packagesAPI,
-  destinationsAPI,
   experiencesAPI,
   reelsAPI,
   SERVER_URL,
@@ -134,7 +133,10 @@ const PackageCard = ({
         style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
       >
         <Star size={12} color="#F59E0B" fill="#F59E0B" />
-        <Text style={styles.cardMeta}>{item.rating || 4.5}</Text>
+        <Text style={styles.cardMeta}>
+          {item.avgRating || item.rating || 4.5}
+          {item.reviewCount ? ` (${item.reviewCount})` : ''}
+        </Text>
         {priceText ? (
           <Text style={styles.cardPrice}> · {priceText}</Text>
         ) : null}
@@ -259,7 +261,10 @@ const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
         style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
       >
         <Star size={12} color="#F59E0B" fill="#F59E0B" />
-        <Text style={styles.cardMeta}>{item.rating || 4.5}</Text>
+        <Text style={styles.cardMeta}>
+          {item.avgRating || item.rating || 4.5}
+          {item.reviewCount ? ` (${item.reviewCount})` : ''}
+        </Text>
         {price ? (
           <Text style={styles.cardPrice}>
             {' '}
@@ -406,8 +411,8 @@ const HomeScreen = () => {
       const userState = user?.state?.trim() || '';
 
       const calls = [
-        packagesAPI.getAll({ limit: 100 }),
-        destinationsAPI.getAll({ limit: 20 }),
+        packagesAPI.getAll({ limit: 100 }), // all packages for curated
+        packagesAPI.getPopular(10), // top-rated packages for Popular Destinations
         reelsAPI.getAll({ limit: 20 }),
       ];
 
@@ -434,15 +439,9 @@ const HomeScreen = () => {
       }
       setCategoryMap(map);
 
-      // ── Popular Destinations → sort by rating desc ────────────────────────
-      const dests = (
-        destRes.data?.destinations ||
-        destRes.data?.popularDestinations ||
-        []
-      )
-        .slice()
-        .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-      setPopularDests(dests);
+      // ── Popular Destinations → top-rated packages sorted by avgRating desc ──
+      const popularPkgs = destRes.data?.packages || [];
+      setPopularDests(popularPkgs);
 
       // ── Reels ─────────────────────────────────────────────────────────────
       setReels(reelRes.data?.reels || []);

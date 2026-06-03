@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,247 +11,505 @@ import {
   StyleSheet,
   Modal,
   ActivityIndicator,
-  Animated,
+  Dimensions,
 } from 'react-native';
 import Video from 'react-native-video';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import {
+  Search,
+  ChevronRight,
+  Star,
+  Heart,
+  X,
+  Play,
+  MapPin,
+  Eye,
+} from 'lucide-react-native';
+import {
+  packagesAPI,
+  destinationsAPI,
+  experiencesAPI,
+  reelsAPI,
+  SERVER_URL,
+} from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { useRecentlyViewed, timeAgo } from '../hooks/useRecentlyViewed';
 import './../../android/app/src/utils/globalFont.js';
-import { packagesAPI, reelsAPI, SERVER_URL } from '../services/api';
-import { useWishlist } from '../context/WishlistContext';
 
-// Resolve relative /uploads/... paths to full URLs
-const resolveImage = (url) => {
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const REEL_COL_WIDTH = (SCREEN_WIDTH - 48) / 2; // 2-column grid with padding
+
+// Resolve relative /uploads/... paths to absolute URLs
+const resolveImage = url => {
   if (!url) return null;
   if (url.startsWith('http')) return url;
   return `${SERVER_URL}${url}`;
 };
-import { Search, ChevronRight, Star, Heart, X, Play } from 'lucide-react-native';
 
-// ─── Recently Viewed — static local history (no backend yet) ─────────────────
-const recentlyViewed = [
-  { id: 1, title: 'Hyderabad',  rating: 4.5, duration: '2 hours', image_url: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=500&h=300&fit=crop' },
-  { id: 2, title: 'Goa, India', rating: 4.5, duration: '2 hours', image_url: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=500&h=300&fit=crop' },
-  { id: 3, title: 'Beachside',  rating: 4.5, duration: '2 hours', image_url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&h=300&fit=crop' },
-  { id: 4, title: 'Hyderabad',  rating: 4.5, duration: '2 hours', image_url: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=500&h=300&fit=crop' },
-  { id: 5, title: 'Mumbai',     rating: 4.6, duration: '3 hours', image_url: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=500&h=300&fit=crop' },
-];
+// ─── Reusable Section Header ──────────────────────────────────────────────────
+const SectionHeader = ({ title, onSeeAll }) => (
+  <View style={styles.sectionHeaderRow}>
+    <Text style={styles.sectionHeading}>{title}</Text>
+    {onSeeAll && (
+      <TouchableOpacity
+        onPress={onSeeAll}
+        hitSlop={12}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+      >
+        <Text style={{ fontSize: 13, color: '#1F8A70', fontWeight: '600' }}>
+          See all
+        </Text>
+        <ChevronRight size={14} color="#1F8A70" />
+      </TouchableOpacity>
+    )}
+  </View>
+);
 
-const HomeScreen = () => {
-  const navigation = useNavigation();
+// ─── Package card (used for Popular Destinations, Curated, Experiences Near You) ─
+const PackageCard = ({
+  item,
+  onPress,
+  onWishlist,
+  inWishlist,
+  wide = false,
+}) => {
+  const width = wide ? 220 : 176;
+  const height = wide ? 160 : 176;
+  const imageUri =
+    resolveImage(item.image_url || item.image) ||
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop';
 
-  // ── State ───────────────────────────────────────────────────────────────────
-  // categoryMap: { [categoryName: string]: Package[] }
-  // Built dynamically from backend — whatever categories exist, max 5 each
-  const [categoryMap,    setCategoryMap]    = useState({});
-  const [guestFavorites, setGuestFavorites] = useState([]);
-  const [loading,        setLoading]        = useState(true);
-  const [refreshing,     setRefreshing]     = useState(false);
-  const [activeVideo,    setActiveVideo]    = useState(null);
+  const price = item.pricing?.adultPrice || item.price || 0;
+  const priceText = price ? `₹${Number(price).toLocaleString('en-IN')}` : null;
 
-  // ── Wishlist from context ────────────────────────────────────────────────
-  const { isSaved, toggleWishlist } = useWishlist();
-
-  // ── Toast ────────────────────────────────────────────────────────────────
-  const [toastMsg,   setToastMsg]  = useState('');
-  const [toastType,  setToastType] = useState('save');
-  const toastOpacity = useRef(new Animated.Value(0)).current;
-  const toastTimer   = useRef(null);
-
-  const showToast = useCallback((msg, type = 'save') => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToastMsg(msg);
-    setToastType(type);
-    Animated.sequence([
-      Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.delay(1800),
-      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-    ]).start();
-    toastTimer.current = setTimeout(() => setToastMsg(''), 2400);
-  }, [toastOpacity]);
-
-  const handleToggleWishlist = useCallback(async (packageId) => {
-    const wasSaved = isSaved(packageId);
-    await toggleWishlist(packageId);
-    showToast(
-      wasSaved ? 'Removed from wishlist' : 'Saved to wishlist ❤️',
-      wasSaved ? 'remove' : 'save',
-    );
-  }, [isSaved, toggleWishlist, showToast]);
-
-  // ── Data fetching ───────────────────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
-    try {
-      // One call for all approved packages + one for reels — no hardcoded categories
-      const [pkgRes, reelRes] = await Promise.all([
-        packagesAPI.getAll({ limit: 100 }),
-        reelsAPI.getAll({ limit: 10 }),
-      ]);
-
-      const allPackages = pkgRes.data?.packages || [];
-
-      // Resolve image URLs (backend returns relative /uploads/... paths)
-      const resolved = allPackages.map(pkg => ({
-        ...pkg,
-        image_url: resolveImage(pkg.image_url),
-        images: (pkg.images || []).map(resolveImage).filter(Boolean),
-      }));
-
-      // Group packages by their `category` field, max 5 per category
-      const map = {};
-      for (const pkg of resolved) {
-        const cat = (pkg.category || '').trim();
-        if (!cat) continue;                   // skip uncategorised packages
-        if (!map[cat]) map[cat] = [];
-        if (map[cat].length < 5) map[cat].push(pkg);
-      }
-
-      setCategoryMap(map);
-      setGuestFavorites(reelRes.data?.reels || []);
-    } catch (err) {
-      console.warn('HomeScreen fetch error:', err.message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchData();
-  }, [fetchData]);
-
-  const openPackage = pkg => navigation.navigate('PackageDetails', { package: pkg });
-
-  // ── Renderers ───────────────────────────────────────────────────────────────
-
-  // Recently Viewed card
-  const renderRecentlyViewedItem = ({ item }) => (
-    <TouchableOpacity style={{ width: 160, marginRight: 16 }} activeOpacity={0.9}>
+  return (
+    <TouchableOpacity
+      style={{ width, marginRight: 14 }}
+      activeOpacity={0.9}
+      onPress={onPress}
+    >
       <View style={{ position: 'relative' }}>
-        <Image source={{ uri: item.image_url }} style={{ width: 160, height: 160, borderRadius: 12 }} resizeMode="cover" />
+        <Image
+          source={{ uri: imageUri }}
+          style={{ width, height, borderRadius: 14 }}
+          resizeMode="cover"
+        />
+        {item.badge ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{item.badge}</Text>
+          </View>
+        ) : null}
         <TouchableOpacity
-          style={{ position: 'absolute', top: 8, right: 8, padding: 6 }}
-          onPress={() => {}}
+          style={styles.heartBtn}
+          onPress={onWishlist}
+          hitSlop={8}
         >
-          <Heart size={18} color="#fff" fill="none" />
+          <Heart
+            size={17}
+            color={inWishlist ? '#EF4444' : '#fff'}
+            fill={inWishlist ? '#EF4444' : 'none'}
+          />
         </TouchableOpacity>
       </View>
-      <Text style={{ marginTop: 8, fontWeight: '600', color: '#0F172A', fontSize: 14 }} numberOfLines={1}>{item.title}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-        <Star size={13} color="#4CAF50" fill="#4CAF50" />
-        <Text style={{ marginLeft: 4, fontSize: 12, color: '#475569' }}>{item.rating} · {item.duration}</Text>
+      <Text style={styles.cardTitle} numberOfLines={1}>
+        {item.title || item.name}
+      </Text>
+      {item.location ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: 2,
+            gap: 3,
+          }}
+        >
+          <MapPin size={11} color="#94A3B8" />
+          <Text style={styles.cardLocation} numberOfLines={1}>
+            {item.location}
+          </Text>
+        </View>
+      ) : null}
+      <View
+        style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
+      >
+        <Star size={12} color="#F59E0B" fill="#F59E0B" />
+        <Text style={styles.cardMeta}>{item.rating || 4.5}</Text>
+        {priceText ? (
+          <Text style={styles.cardPrice}> · {priceText}</Text>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
+};
 
-  // Universal package card — used for every dynamic category section
-  const renderPackageItem = ({ item }) => (
-    <TouchableOpacity style={{ width: 176, marginRight: 16 }} activeOpacity={0.9} onPress={() => openPackage(item)}>
+// ─── Recently Viewed card ─────────────────────────────────────────────────────
+const RecentCard = ({ item, onPress }) => {
+  const imageUri =
+    resolveImage(item.image_url) ||
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop';
+  return (
+    <TouchableOpacity
+      style={{ width: 90, marginRight: 12 }}
+      activeOpacity={0.9}
+      onPress={onPress}
+    >
       <View style={{ position: 'relative' }}>
-        <Image source={{ uri: item.image_url }} style={{ width: 176, height: 176, borderRadius: 12 }} resizeMode="cover" />
-        {item.badge ? (
-          <View style={{ position: 'absolute', top: 8, left: 8, backgroundColor: '#E6F4EF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: '#1F8A70' }}>{item.badge}</Text>
-          </View>
-        ) : null}
-        <TouchableOpacity style={{ position: 'absolute', top: 8, right: 8, padding: 6 }} onPress={() => handleToggleWishlist(item._id)}>
-          <Heart size={18} color={isSaved(item._id) ? '#EF4444' : '#fff'} fill={isSaved(item._id) ? '#EF4444' : 'none'} />
-        </TouchableOpacity>
+        <Image
+          source={{ uri: imageUri }}
+          style={{ width: 90, height: 90, borderRadius: 10 }}
+          resizeMode="cover"
+        />
+        <View
+          style={{
+            position: 'absolute',
+            top: 5,
+            right: 5,
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            borderRadius: 10,
+            padding: 3,
+          }}
+        >
+          <Heart size={13} color="#9CA3AF" fill="none" />
+        </View>
       </View>
-      <Text style={{ marginTop: 8, fontWeight: '600', color: '#0F172A', fontSize: 14 }} numberOfLines={1}>{item.title}</Text>
-      {item.location ? (
-        <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }} numberOfLines={1}>{item.location}</Text>
-      ) : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-        <Star size={12} color="#4CAF50" fill="#4CAF50" />
-        <Text style={{ marginLeft: 4, fontSize: 12, color: '#475569' }}>
-          {item.rating} · ₹{item.price?.toLocaleString('en-IN')}
+      <Text
+        style={{
+          marginTop: 5,
+          fontWeight: '600',
+          color: '#0F172A',
+          fontSize: 12,
+        }}
+        numberOfLines={1}
+      >
+        {item.title}
+      </Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: 2,
+          gap: 3,
+        }}
+      >
+        <Star size={10} color="#4CAF50" fill="#4CAF50" />
+        <Text style={{ fontSize: 11, color: '#64748B' }}>
+          {item.rating || 4.5}
+        </Text>
+        <Text style={{ fontSize: 11, color: '#CBD5E1' }}>·</Text>
+        <Text style={{ fontSize: 11, color: '#94A3B8' }}>
+          {timeAgo(item.viewedAt)}
         </Text>
       </View>
     </TouchableOpacity>
   );
+};
 
-  // Guest Favorites (reels) card
-  const renderGuestFavoriteItem = ({ item }) => (
-    <TouchableOpacity style={{ width: 194, marginRight: 16 }} activeOpacity={0.9} onPress={() => setActiveVideo(item)}>
+// ─── Popular Destination card (wider, rating-sorted) ─────────────────────────
+const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
+  const imageUri =
+    resolveImage(item.image_url || item.image) ||
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop';
+  const price = item.price || 0;
+
+  return (
+    <TouchableOpacity
+      style={{ width: 200, marginRight: 14 }}
+      activeOpacity={0.9}
+      onPress={onPress}
+    >
       <View style={{ position: 'relative' }}>
-        {item.thumbnail ? (
-          <Image source={{ uri: item.thumbnail }} style={{ width: 194, height: 291, borderRadius: 12 }} resizeMode="cover" />
-        ) : (
-          <Video source={{ uri: item.video }} style={{ width: 194, height: 291, borderRadius: 12 }} resizeMode="cover" muted paused repeat={false} />
-        )}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.25)' }} />
-        <View style={{ position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -18 }, { translateY: -18 }], width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
-          <Play size={18} color="#fff" fill="#fff" />
+        <Image
+          source={{ uri: imageUri }}
+          style={{ width: 200, height: 150, borderRadius: 14 }}
+          resizeMode="cover"
+        />
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>Popular</Text>
         </View>
+        <TouchableOpacity
+          style={styles.heartBtn}
+          onPress={onWishlist}
+          hitSlop={8}
+        >
+          <Heart
+            size={17}
+            color={inWishlist ? '#EF4444' : '#fff'}
+            fill={inWishlist ? '#EF4444' : 'none'}
+          />
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.cardTitle} numberOfLines={1}>
+        {item.name || item.title}
+      </Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: 2,
+          gap: 3,
+        }}
+      >
+        <MapPin size={11} color="#94A3B8" />
+        <Text style={styles.cardLocation} numberOfLines={1}>
+          {item.location}
+        </Text>
+      </View>
+      <View
+        style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
+      >
+        <Star size={12} color="#F59E0B" fill="#F59E0B" />
+        <Text style={styles.cardMeta}>{item.rating || 4.5}</Text>
+        {price ? (
+          <Text style={styles.cardPrice}>
+            {' '}
+            · From ₹{Number(price).toLocaleString('en-IN')}
+          </Text>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// ─── Reel card (2-column grid) ────────────────────────────────────────────────
+const ReelCard = ({ item, onPress }) => {
+  const thumb = item.thumbnail ? resolveImage(item.thumbnail) : null;
+  const views = item.views
+    ? item.views >= 1000
+      ? `${(item.views / 1000).toFixed(1)}k`
+      : String(item.views)
+    : null;
+
+  return (
+    <TouchableOpacity
+      style={{ width: REEL_COL_WIDTH, marginBottom: 12 }}
+      activeOpacity={0.9}
+      onPress={onPress}
+    >
+      <View
+        style={{ position: 'relative', borderRadius: 14, overflow: 'hidden' }}
+      >
+        {thumb ? (
+          <Image
+            source={{ uri: thumb }}
+            style={{ width: REEL_COL_WIDTH, height: REEL_COL_WIDTH * 1.4 }}
+            resizeMode="cover"
+          />
+        ) : (
+          <Video
+            source={{ uri: item.video }}
+            style={{ width: REEL_COL_WIDTH, height: REEL_COL_WIDTH * 1.4 }}
+            resizeMode="cover"
+            muted
+            paused
+            repeat={false}
+          />
+        )}
+        {/* dark overlay */}
+        <View
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: 'rgba(0,0,0,0.22)',
+          }}
+        />
+        {/* play icon */}
+        <View
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: [{ translateX: -16 }, { translateY: -16 }],
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Play size={15} color="#fff" fill="#fff" />
+        </View>
+        {/* view count */}
+        {views ? (
+          <View
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              borderRadius: 10,
+              paddingHorizontal: 6,
+              paddingVertical: 3,
+              gap: 4,
+            }}
+          >
+            <Eye size={11} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>
+              {views}
+            </Text>
+          </View>
+        ) : null}
+        {/* uploader name */}
         {item.user?.name ? (
           <View style={{ position: 'absolute', bottom: 8, left: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20, backgroundColor: '#E6F4EF' }}>
-              {item.user.avatar ? <Image source={{ uri: item.user.avatar }} style={{ width: 18, height: 18, borderRadius: 9, marginRight: 6 }} /> : null}
-              <Text style={{ fontSize: 11, fontWeight: '600', color: '#1F8A70' }}>{item.user.name}</Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#E6F4EF',
+                borderRadius: 10,
+                paddingHorizontal: 6,
+                paddingVertical: 3,
+                gap: 4,
+              }}
+            >
+              {item.user.avatar ? (
+                <Image
+                  source={{ uri: item.user.avatar }}
+                  style={{ width: 14, height: 14, borderRadius: 7 }}
+                />
+              ) : null}
+              <Text
+                style={{ fontSize: 10, fontWeight: '600', color: '#1F8A70' }}
+              >
+                {item.user.name}
+              </Text>
             </View>
           </View>
         ) : null}
       </View>
     </TouchableOpacity>
   );
+};
 
-  // Video fullscreen modal
-  const VideoModal = ({ visible, item, onClose }) => {
-    if (!item) return null;
-    return (
-      <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-        <View style={styles.modalContainer}>
-          <Video source={{ uri: item.video }} style={StyleSheet.absoluteFillObject} resizeMode="contain" muted={false} repeat paused={false} />
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <X size={22} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.modalInfo}>
-            <Text style={styles.modalTitle}>{item.title}</Text>
-            <Text style={styles.modalLocation}>{item.location}</Text>
-            {item.user?.name ? (
-              <View style={styles.modalUser}>
-                {item.user.avatar ? <Image source={{ uri: item.user.avatar }} style={styles.modalAvatar} /> : null}
-                <Text style={styles.modalUserName}>{item.user.name}</Text>
-                {item.user.role ? <Text style={styles.modalRole}> · {item.user.role}</Text> : null}
-              </View>
-            ) : null}
-          </View>
-        </View>
-      </Modal>
-    );
+// ─── Main HomeScreen ──────────────────────────────────────────────────────────
+const HomeScreen = () => {
+  const navigation = useNavigation();
+  const { user } = useAuth();
+  const { recentlyViewed, addViewed } = useRecentlyViewed();
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  const [categoryMap, setCategoryMap] = useState({}); // { catName: [pkg] }
+  const [popularDests, setPopularDests] = useState([]); // sorted by rating
+  const [nearYouItems, setNearYouItems] = useState([]); // experiences matching state
+  const [reels, setReels] = useState([]); // video reels (2-col grid)
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [wishlist, setWishlist] = useState({});
+  const [activeVideo, setActiveVideo] = useState(null);
+
+  // ── Data fetching ───────────────────────────────────────────────────────────
+  const fetchData = useCallback(async () => {
+    try {
+      const userState = user?.state?.trim() || '';
+
+      const calls = [
+        packagesAPI.getAll({ limit: 100 }),
+        destinationsAPI.getAll({ limit: 20 }),
+        reelsAPI.getAll({ limit: 20 }),
+      ];
+
+      // Only fetch experiences if user has a state set
+      if (userState) {
+        calls.push(experiencesAPI.getByLocation(userState));
+      } else {
+        calls.push(experiencesAPI.getAll({ limit: 10 }));
+      }
+
+      const [pkgRes, destRes, reelRes, expRes] = await Promise.all(calls);
+
+      // ── Packages → group by category ─────────────────────────────────────
+      const allPkgs = (pkgRes.data?.packages || []).map(p => ({
+        ...p,
+        image_url: resolveImage(p.image_url),
+        images: (p.images || []).map(resolveImage).filter(Boolean),
+      }));
+
+      const map = {};
+      // Put ALL packages in one "Curated Packages" section on home (max 5 shown)
+      if (allPkgs.length > 0) {
+        map['Curated Packages'] = allPkgs.slice(0, 5);
+      }
+      setCategoryMap(map);
+
+      // ── Popular Destinations → sort by rating desc ────────────────────────
+      const dests = (
+        destRes.data?.destinations ||
+        destRes.data?.popularDestinations ||
+        []
+      )
+        .slice()
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      setPopularDests(dests);
+
+      // ── Reels ─────────────────────────────────────────────────────────────
+      setReels(reelRes.data?.reels || []);
+
+      // ── Experiences Near You ─────────────────────────────────────────────
+      // Try experiences API first; if empty, fall back to packages
+      // matching the user's state so the section is never empty
+      const expItems = expRes.data?.experiences || [];
+      if (expItems.length > 0) {
+        setNearYouItems(expItems);
+      } else {
+        // Fallback: packages whose location contains the user's state keyword
+        const keyword = userState.toLowerCase();
+        const fallback = keyword
+          ? allPkgs
+              .filter(
+                p =>
+                  (p.location || '').toLowerCase().includes(keyword) ||
+                  (p.destination || '').toLowerCase().includes(keyword),
+              )
+              .slice(0, 8)
+          : allPkgs.slice(0, 8); // no state → just show first 8 packages
+        setNearYouItems(fallback);
+      }
+    } catch (err) {
+      console.warn('HomeScreen fetch error:', err.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.state]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData();
+  }, [fetchData]);
+
+  // ── Wishlist helpers ────────────────────────────────────────────────────────
+  const toggleWishlist = id =>
+    setWishlist(prev => ({ ...prev, [id]: !prev[id] }));
+
+  const openPackage = pkg => {
+    addViewed(pkg);
+    navigation.navigate('PackageDetails', { package: pkg });
   };
 
-  const SectionLoader = () => (
-    <View style={{ paddingVertical: 12 }}>
-      <ActivityIndicator size="small" color="#1F8A70" />
-    </View>
-  );
-
-  const EmptySection = ({ message = 'No packages available yet.' }) => (
-    <View style={{ paddingVertical: 8 }}>
-      <Text style={{ color: '#94A3B8', fontSize: 13 }}>{message}</Text>
-    </View>
-  );
+  const categoryEntries = Object.entries(categoryMap);
+  const userState = user?.state?.trim() || '';
 
   // ── Render ──────────────────────────────────────────────────────────────────
-  const categoryEntries = Object.entries(categoryMap); // [[catName, [pkg,...]], ...]
-
   return (
     <SafeAreaProvider style={{ flex: 1, backgroundColor: '#E6F4EF' }}>
       <StatusBar barStyle="dark-content" backgroundColor="#E6F4EF" />
 
-      {/* Search bar header */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, backgroundColor: '#E6F4EF', marginTop: 48 }}>
+      {/* Search bar */}
+      <View style={styles.searchWrap}>
         <TouchableOpacity
           onPress={() => navigation.navigate('Search')}
-          style={{ flexDirection: 'row', alignItems: 'center', height: 56, borderRadius: 28, backgroundColor: '#FFFFFF', paddingHorizontal: 16, gap: 4, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 }}
+          style={styles.searchBar}
+          activeOpacity={0.85}
         >
-          <Search size={20} color="#4A5568" />
-          <Text style={{ color: '#4A5568', fontFamily: 'Inter_24pt-Regular', fontSize: 15, marginLeft: 4 }}>
+          <Search size={20} color="#64748B" />
+          <Text style={styles.searchPlaceholder}>
             Find your next trip or experience
           </Text>
         </TouchableOpacity>
@@ -259,130 +517,348 @@ const HomeScreen = () => {
 
       <ScrollView
         style={{ flex: 1, backgroundColor: '#fff' }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1F8A70']} />}
-      >
-        {/* ── Recently Viewed (static) ── */}
-        <View style={{ paddingHorizontal: 16, paddingVertical: 24, backgroundColor: '#fff' }}>
-          <Text style={styles.sectionHeading}>Recently viewed</Text>
-          <FlatList
-            data={recentlyViewed}
-            renderItem={renderRecentlyViewedItem}
-            keyExtractor={item => item.id.toString()}
-            horizontal
-            showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#1F8A70']}
           />
-        </View>
-
-        {/* ── Dynamic category sections ── */}
-        {loading ? (
-          <View style={{ paddingHorizontal: 16, paddingVertical: 24 }}>
-            <SectionLoader />
-          </View>
-        ) : categoryEntries.length === 0 ? (
-          <View style={{ paddingHorizontal: 16, paddingVertical: 24 }}>
-            <EmptySection message="No packages available yet." />
-          </View>
-        ) : (
-          categoryEntries.map(([categoryName, packages]) => (
-            <View key={categoryName} style={{ paddingHorizontal: 16, paddingVertical: 24, marginTop: 2, backgroundColor: '#fff' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <Text style={styles.sectionHeading}>
-                  {categoryName === 'Curated Packages' ? 'Current Packages' : categoryName}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('CuratedPackages', { categoryName })}
-                  style={{ flexDirection: 'row', alignItems: 'center' }}
-                >
-                  <ChevronRight size={16} color="#1F8A70" />
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={packages}
-                renderItem={renderPackageItem}
-                keyExtractor={item => item._id}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-              />
-            </View>
-          ))
-        )}
-
-        {/* ── Guest Favorites (reels from backend) ── */}
-        <View style={{ paddingHorizontal: 16, paddingVertical: 24, marginTop: 2, marginBottom: 8, backgroundColor: '#fff' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Text style={styles.sectionHeading}>Guest Favorites</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('GuestFavorites')} style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <ChevronRight size={16} color="#1F8A70" />
-            </TouchableOpacity>
-          </View>
-          {loading ? (
-            <SectionLoader />
-          ) : guestFavorites.length === 0 ? (
-            <EmptySection message="No guest favorites yet." />
-          ) : (
+        }
+      >
+        {/* ── Recently Viewed ────────────────────────────────────────────── */}
+        {recentlyViewed.length > 0 && (
+          <View style={styles.section}>
+            <SectionHeader title="Recently Viewed" />
             <FlatList
-              data={guestFavorites}
-              renderItem={renderGuestFavoriteItem}
+              data={recentlyViewed}
+              renderItem={({ item }) => (
+                <RecentCard
+                  item={item}
+                  onPress={() =>
+                    navigation.navigate('PackageDetails', { package: item })
+                  }
+                />
+              )}
               keyExtractor={item => item._id}
               horizontal
               showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: 16 }}
             />
-          )}
-        </View>
+          </View>
+        )}
+
+        {/* ── Popular Destinations ───────────────────────────────────────── */}
+        {loading ? (
+          <View style={styles.section}>
+            <SectionHeader title="Popular Destinations" />
+            <ActivityIndicator size="small" color="#1F8A70" />
+          </View>
+        ) : popularDests.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeader
+              title="Popular Destinations"
+              onSeeAll={() => navigation.navigate('PopularDestinations')}
+            />
+            <FlatList
+              data={popularDests}
+              renderItem={({ item }) => (
+                <DestCard
+                  item={item}
+                  onPress={() =>
+                    navigation.navigate('DestinationDetail', {
+                      destination: item,
+                    })
+                  }
+                  onWishlist={() => toggleWishlist(item._id)}
+                  inWishlist={!!wishlist[item._id]}
+                />
+              )}
+              keyExtractor={item => String(item._id)}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: 16 }}
+            />
+          </View>
+        ) : null}
+
+        {/* ── Dynamic category sections (Curated Packages etc.) ─────────── */}
+        {loading ? (
+          <View style={styles.section}>
+            <SectionHeader title="Curated Packages" />
+            <ActivityIndicator size="small" color="#1F8A70" />
+          </View>
+        ) : categoryEntries.length > 0 ? (
+          categoryEntries.map(([catName, packages]) => (
+            <View key={catName} style={styles.section}>
+              <SectionHeader
+                title={catName}
+                onSeeAll={() =>
+                  navigation.navigate('CuratedPackages', {
+                    categoryName: catName,
+                  })
+                }
+              />
+              <FlatList
+                data={packages}
+                renderItem={({ item }) => (
+                  <PackageCard
+                    item={item}
+                    onPress={() => openPackage(item)}
+                    onWishlist={() => toggleWishlist(item._id)}
+                    inWishlist={!!wishlist[item._id]}
+                  />
+                )}
+                keyExtractor={item => item._id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: 16 }}
+              />
+            </View>
+          ))
+        ) : !loading ? (
+          <View style={styles.section}>
+            <SectionHeader title="Curated Packages" />
+            <Text style={styles.emptyText}>No packages available yet.</Text>
+          </View>
+        ) : null}
+
+        {/* ── Experiences Near You (cards) ───────────────────────────────── */}
+        {loading ? (
+          <View style={styles.section}>
+            <SectionHeader
+              title={
+                userState
+                  ? `Experiences in ${userState}`
+                  : 'Experiences Near You'
+              }
+            />
+            <ActivityIndicator size="small" color="#1F8A70" />
+          </View>
+        ) : nearYouItems.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeader
+              title={
+                userState
+                  ? `Experiences in ${userState}`
+                  : 'Experiences Near You'
+              }
+              onSeeAll={() => navigation.navigate('ExperiencesNearYou')}
+            />
+            <FlatList
+              data={nearYouItems}
+              renderItem={({ item }) => (
+                <PackageCard
+                  item={{ ...item, title: item.name || item.title }}
+                  onPress={() =>
+                    navigation.navigate('DestinationDetail', {
+                      destination: item,
+                    })
+                  }
+                  onWishlist={() => toggleWishlist(item._id)}
+                  inWishlist={!!wishlist[item._id]}
+                  wide
+                />
+              )}
+              keyExtractor={item => String(item._id)}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: 16 }}
+            />
+          </View>
+        ) : null}
+
+        {/* ── Experience Reels (2-column video grid) ─────────────────────── */}
+        {reels.length > 0 && (
+          <View style={styles.section}>
+            <SectionHeader
+              title="Experiences Near You"
+              onSeeAll={() => navigation.navigate('GuestFavorites')}
+            />
+            {/* 2-col grid */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+              {reels.map(item => (
+                <ReelCard
+                  key={item._id}
+                  item={item}
+                  onPress={() => setActiveVideo(item)}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Bottom padding */}
+        <View style={{ height: 32 }} />
       </ScrollView>
 
-      <VideoModal visible={!!activeVideo} item={activeVideo} onClose={() => setActiveVideo(null)} />
-
-      {/* Toast */}
-      {toastMsg ? (
-        <Animated.View
-          style={[
-            {
-              position: 'absolute',
-              bottom: 90,
-              alignSelf: 'center',
-              paddingHorizontal: 20,
-              paddingVertical: 10,
-              borderRadius: 24,
-              elevation: 8,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.18,
-              shadowRadius: 6,
-              backgroundColor: toastType === 'save' ? '#1F8A70' : '#374151',
-            },
-            { opacity: toastOpacity },
-          ]}
-          pointerEvents="none"
-        >
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{toastMsg}</Text>
-        </Animated.View>
-      ) : null}
+      {/* ── Fullscreen video modal ───────────────────────────────────────── */}
+      <Modal
+        visible={!!activeVideo}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setActiveVideo(null)}
+      >
+        {activeVideo ? (
+          <View style={styles.modalContainer}>
+            <Video
+              source={{ uri: activeVideo.video }}
+              style={StyleSheet.absoluteFillObject}
+              resizeMode="contain"
+              muted={false}
+              repeat
+              paused={false}
+            />
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={() => setActiveVideo(null)}
+            >
+              <X size={22} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.modalInfo}>
+              <Text style={styles.modalTitle}>{activeVideo.title}</Text>
+              {activeVideo.location ? (
+                <Text style={styles.modalLocation}>{activeVideo.location}</Text>
+              ) : null}
+              {activeVideo.user?.name ? (
+                <View style={styles.modalUser}>
+                  {activeVideo.user.avatar ? (
+                    <Image
+                      source={{ uri: activeVideo.user.avatar }}
+                      style={styles.modalAvatar}
+                    />
+                  ) : null}
+                  <Text style={styles.modalUserName}>
+                    {activeVideo.user.name}
+                  </Text>
+                  {activeVideo.user.role ? (
+                    <Text style={styles.modalRole}>
+                      {' '}
+                      · {activeVideo.user.role}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+      </Modal>
     </SafeAreaProvider>
   );
 };
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  searchWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: '#E6F4EF',
+    marginTop: 44,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchPlaceholder: {
+    color: '#94A3B8',
+    fontSize: 14,
+    flex: 1,
+  },
+  section: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 4,
+    backgroundColor: '#fff',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
   sectionHeading: {
-    fontFamily: 'Inter_28pt-Regular',
     fontSize: 20,
     fontWeight: '700',
     color: '#0F172A',
+    fontFamily: 'Inter_28pt-Regular',
   },
+  badge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#E6F4EF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  badgeText: { fontSize: 11, fontWeight: '700', color: '#1F8A70' },
+  heartBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    padding: 6,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderRadius: 16,
+  },
+  cardTitle: {
+    marginTop: 8,
+    fontWeight: '600',
+    color: '#0F172A',
+    fontSize: 14,
+  },
+  cardLocation: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  cardMeta: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: '#64748B',
+  },
+  cardPrice: {
+    fontSize: 12,
+    color: '#1F8A70',
+    fontWeight: '600',
+  },
+  emptyText: { color: '#94A3B8', fontSize: 13, paddingBottom: 8 },
+  // Video modal
   modalContainer: { flex: 1, backgroundColor: '#000' },
   closeBtn: {
-    position: 'absolute', top: 50, left: 16,
-    width: 40, height: 40, borderRadius: 20,
+    position: 'absolute',
+    top: 52,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center', justifyContent: 'center', zIndex: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
-  modalInfo: { position: 'absolute', bottom: 40, left: 20, right: 20 },
-  modalTitle:    { color: '#fff', fontSize: 20, fontWeight: '700' },
-  modalLocation: { color: 'rgba(255,255,255,0.75)', fontSize: 14, marginTop: 4 },
-  modalUser:     { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
-  modalAvatar:   { width: 28, height: 28, borderRadius: 14, marginRight: 8 },
+  modalInfo: { position: 'absolute', bottom: 48, left: 20, right: 20 },
+  modalTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  modalLocation: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  modalUser: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
+  modalAvatar: { width: 28, height: 28, borderRadius: 14, marginRight: 8 },
   modalUserName: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  modalRole:     { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
+  modalRole: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
 });
 
 export default HomeScreen;

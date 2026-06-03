@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Dev mode: allow cleartext HTTP traffic to any host.
+         This permits the React Native app to talk to a local
+         backend during development regardless of the current Wi-Fi IP. -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />

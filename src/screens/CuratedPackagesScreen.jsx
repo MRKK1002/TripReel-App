@@ -12,17 +12,24 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeft, Search, Star, Heart, MapPin, Clock } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Search,
+  Star,
+  Heart,
+  MapPin,
+  Clock,
+} from 'lucide-react-native';
 import { packagesAPI, SERVER_URL } from '../services/api';
 
 const BADGE_COLORS = {
   Trending: { bg: '#FEF3C7', text: '#D97706' },
-  Popular:  { bg: '#E6F4EF', text: '#1F8A70' },
-  New:      { bg: '#EDE9FE', text: '#7C3AED' },
+  Popular: { bg: '#E6F4EF', text: '#1F8A70' },
+  New: { bg: '#EDE9FE', text: '#7C3AED' },
 };
 
 // Convert relative /uploads/... paths to full URLs
-const resolveImage = (url) => {
+const resolveImage = url => {
   if (!url) return null;
   if (url.startsWith('http')) return url;
   return `${SERVER_URL}${url}`;
@@ -34,20 +41,33 @@ const CuratedPackagesScreen = () => {
   // categoryName passed from HomeScreen arrow — filter to that category if provided
   const categoryName = route.params?.categoryName || null;
 
-  const [packages,   setPackages]   = useState([]);
-  const [loading,    setLoading]    = useState(true);
+  const [packages, setPackages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search,     setSearch]     = useState('');
-  const [wishlist,   setWishlist]   = useState({});
-  const [error,      setError]      = useState('');
+  const [search, setSearch] = useState('');
+  const [wishlist, setWishlist] = useState({});
+  const [error, setError] = useState('');
 
   const fetchPackages = useCallback(async () => {
     try {
       setError('');
       const params = { limit: 100 };
-      if (categoryName) params.category = categoryName;
+      // Only pass category filter if it's a real DB category (not our fallback label)
+      if (categoryName && categoryName !== 'Curated Packages') {
+        params.category = categoryName;
+      }
       const res = await packagesAPI.getAll(params);
-      setPackages(res.data?.packages || []);
+      let pkgs = res.data?.packages || [];
+
+      // If we're in the fallback "Curated Packages" group,
+      // filter to only packages that have no category set
+      if (categoryName === 'Curated Packages') {
+        pkgs = pkgs.filter(
+          p => !(p.category || p.approvedCategory || '').trim(),
+        );
+      }
+
+      setPackages(pkgs);
     } catch (err) {
       setError('Failed to load packages. Pull down to retry.');
       console.warn('CuratedPackages fetch error:', err.message);
@@ -57,9 +77,14 @@ const CuratedPackagesScreen = () => {
     }
   }, [categoryName]);
 
-  useEffect(() => { fetchPackages(); }, [fetchPackages]);
+  useEffect(() => {
+    fetchPackages();
+  }, [fetchPackages]);
 
-  const onRefresh = () => { setRefreshing(true); fetchPackages(); };
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchPackages();
+  };
 
   const toggleWishlist = id =>
     setWishlist(prev => ({ ...prev, [id]: !prev[id] }));
@@ -76,25 +101,31 @@ const CuratedPackagesScreen = () => {
 
     // Build price label
     const discountPrice = item.pricing?.discountPrice;
-    const adultPrice    = item.pricing?.adultPrice;
-    const basePrice     = item.price;
-    const displayPrice  = discountPrice || adultPrice || basePrice || 0;
-    const priceLabel    = item.priceLabel && isNaN(Number(item.priceLabel))
-      ? item.priceLabel
-      : `From ₹${Number(displayPrice).toLocaleString('en-IN')}/guest`;
+    const adultPrice = item.pricing?.adultPrice;
+    const basePrice = item.price;
+    const displayPrice = discountPrice || adultPrice || basePrice || 0;
+    const priceLabel =
+      item.priceLabel && isNaN(Number(item.priceLabel))
+        ? item.priceLabel
+        : `From ₹${Number(displayPrice).toLocaleString('en-IN')}/guest`;
 
     // Resolve image URL
-    const imageUri = resolveImage(item.image_url) ||
+    const imageUri =
+      resolveImage(item.image_url) ||
       'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=400&fit=crop';
 
     return (
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={() => navigation.navigate('PackageDetails', { package: {
-          ...item,
-          image_url: resolveImage(item.image_url),
-          images: (item.images || []).map(resolveImage).filter(Boolean),
-        }})}
+        onPress={() =>
+          navigation.navigate('PackageDetails', {
+            package: {
+              ...item,
+              image_url: resolveImage(item.image_url),
+              images: (item.images || []).map(resolveImage).filter(Boolean),
+            },
+          })
+        }
         style={{
           backgroundColor: '#fff',
           borderRadius: 16,
@@ -117,21 +148,30 @@ const CuratedPackagesScreen = () => {
           />
           <View
             style={{
-              position: 'absolute', top: 12, left: 12,
-              backgroundColor: badge.bg, borderRadius: 20,
-              paddingHorizontal: 10, paddingVertical: 4,
+              position: 'absolute',
+              top: 12,
+              left: 12,
+              backgroundColor: badge.bg,
+              borderRadius: 20,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
             }}
           >
-            <Text style={{ color: badge.text, fontSize: 11, fontWeight: '700' }}>
+            <Text
+              style={{ color: badge.text, fontSize: 11, fontWeight: '700' }}
+            >
               {badgeKey}
             </Text>
           </View>
           <TouchableOpacity
             onPress={() => toggleWishlist(item._id)}
             style={{
-              position: 'absolute', top: 10, right: 10,
+              position: 'absolute',
+              top: 10,
+              right: 10,
               backgroundColor: 'rgba(255,255,255,0.85)',
-              borderRadius: 20, padding: 6,
+              borderRadius: 20,
+              padding: 6,
             }}
           >
             <Heart
@@ -144,34 +184,67 @@ const CuratedPackagesScreen = () => {
 
         {/* Info */}
         <View style={{ padding: 14 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 2 }}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: '700',
+              color: '#111827',
+              marginBottom: 2,
+            }}
+          >
             {item.title}
           </Text>
           {item.description ? (
-            <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 8 }} numberOfLines={1}>
+            <Text
+              style={{ fontSize: 13, color: '#6B7280', marginBottom: 8 }}
+              numberOfLines={1}
+            >
               {item.description}
             </Text>
           ) : null}
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 8,
+            }}
+          >
             <MapPin size={13} color="#6B7280" />
             <Text style={{ fontSize: 13, color: '#6B7280', marginLeft: 4 }}>
               {item.location}
             </Text>
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Star size={13} color="#F59E0B" fill="#F59E0B" />
-                <Text style={{ fontSize: 13, color: '#374151', marginLeft: 4, fontWeight: '600' }}>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: '#374151',
+                    marginLeft: 4,
+                    fontWeight: '600',
+                  }}
+                >
                   {item.rating || 4.5}
                 </Text>
               </View>
               {item.duration ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Clock size={13} color="#6B7280" />
-                  <Text style={{ fontSize: 13, color: '#6B7280', marginLeft: 4 }}>
+                  <Text
+                    style={{ fontSize: 13, color: '#6B7280', marginLeft: 4 }}
+                  >
                     {item.duration}
                   </Text>
                 </View>
@@ -193,16 +266,27 @@ const CuratedPackagesScreen = () => {
       {/* Header */}
       <View
         style={{
-          flexDirection: 'row', alignItems: 'center',
-          paddingHorizontal: 16, paddingVertical: 12,
-          backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          backgroundColor: '#fff',
+          borderBottomWidth: 1,
+          borderBottomColor: '#F0F0F0',
         }}
       >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ marginRight: 12 }}
+        >
           <ArrowLeft size={22} color="#111827" />
         </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', flex: 1 }}>
-          {categoryName === 'Curated Packages' || categoryName === 'Current Packages' || !categoryName
+        <Text
+          style={{ fontSize: 18, fontWeight: '700', color: '#111827', flex: 1 }}
+        >
+          {categoryName === 'Curated Packages' ||
+          categoryName === 'Current Packages' ||
+          !categoryName
             ? 'Current Packages'
             : categoryName}
         </Text>
@@ -212,12 +296,21 @@ const CuratedPackagesScreen = () => {
       </View>
 
       {/* Search */}
-      <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff' }}>
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          backgroundColor: '#fff',
+        }}
+      >
         <View
           style={{
-            flexDirection: 'row', alignItems: 'center',
-            backgroundColor: '#F3F4F6', borderRadius: 12,
-            paddingHorizontal: 12, paddingVertical: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#F3F4F6',
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
           }}
         >
           <Search size={18} color="#9CA3AF" />
@@ -232,17 +325,41 @@ const CuratedPackagesScreen = () => {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+        >
           <ActivityIndicator size="large" color="#1F8A70" />
         </View>
       ) : error ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-          <Text style={{ color: '#EF4444', textAlign: 'center', fontSize: 14, marginBottom: 12 }}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 32,
+          }}
+        >
+          <Text
+            style={{
+              color: '#EF4444',
+              textAlign: 'center',
+              fontSize: 14,
+              marginBottom: 12,
+            }}
+          >
             {error}
           </Text>
           <TouchableOpacity
-            onPress={() => { setLoading(true); fetchPackages(); }}
-            style={{ backgroundColor: '#1F8A70', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10 }}
+            onPress={() => {
+              setLoading(true);
+              fetchPackages();
+            }}
+            style={{
+              backgroundColor: '#1F8A70',
+              paddingHorizontal: 24,
+              paddingVertical: 10,
+              borderRadius: 10,
+            }}
           >
             <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
           </TouchableOpacity>
@@ -255,11 +372,17 @@ const CuratedPackagesScreen = () => {
           contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1F8A70']} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#1F8A70']}
+            />
           }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingTop: 60 }}>
-              <Text style={{ color: '#9CA3AF', fontSize: 14 }}>No packages found.</Text>
+              <Text style={{ color: '#9CA3AF', fontSize: 14 }}>
+                No packages found.
+              </Text>
             </View>
           }
         />

@@ -12,29 +12,33 @@ import './../../android/app/src/utils/globalFont.js';
 const { width, height } = Dimensions.get('window');
 
 const SplashScreen = ({ navigation }) => {
-  const { isAuthenticated } = useAuth();
+  // loading = true while AsyncStorage is being read on cold start
+  const { isAuthenticated, loading } = useAuth();
   const timerRef = useRef(null);
 
   useEffect(() => {
+    // Don't navigate until the session restore is done
+    if (loading) return;
+
     timerRef.current = setTimeout(() => {
       if (isAuthenticated) {
         navigation.replace('Main');
       } else {
         navigation.replace('Welcome');
       }
-    }, 1200);
+    }, 800); // short splash delay
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isAuthenticated, navigation]);
+  }, [loading, isAuthenticated, navigation]);
 
   return (
     <View style={{ flex: 1 }}>
       <StatusBar
         barStyle="light-content"
         backgroundColor="transparent"
-        translucent={true}
+        translucent
       />
       <Image
         source={require('../assets/splash.png')}

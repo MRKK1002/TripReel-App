@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://192.168.1.32:5001/api';
-export const SERVER_URL = 'http://192.168.1.32:5001';
+const BASE_URL = 'http://192.168.1.43:5001/api';
+export const SERVER_URL = 'http://192.168.1.43:5001';
 
 const api = axios.create({
     baseURL: BASE_URL,
@@ -58,6 +58,15 @@ export const experiencesAPI = {
 // Reel endpoints (public — only active reels)
 export const reelsAPI = {
     getAll: (params = {}) => api.get('/reels', { params }),
+};
+
+// Wishlist endpoints (requires auth)
+export const wishlistAPI = {
+    getMyWishlists: ()                           => api.get('/wishlists/my'),
+    createWishlist: (data)                       => api.post('/wishlists', data),
+    addPackage: (wishlistId, packageId)          => api.post(`/wishlists/${wishlistId}/packages`, { packageId }),
+    removePackage: (wishlistId, packageId)       => api.delete(`/wishlists/${wishlistId}/packages/${packageId}`),
+    deleteWishlist: (id)                         => api.delete(`/wishlists/${id}`),
 };
 
 export default api;

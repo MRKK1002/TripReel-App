@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/context/AuthContext';
+import { WishlistProvider } from './src/context/WishlistContext';
 import Feather from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -227,6 +228,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
+        <WishlistProvider>
         {/* <StatusBar backgroundColor="#000" barStyle="light-content" /> */}
         <NavigationContainer>
           <Stack.Navigator initialRouteName="Splash">
@@ -345,6 +347,7 @@ export default function App() {
             />
           </Stack.Navigator>
         </NavigationContainer>
+        </WishlistProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,72 +11,73 @@ import {
   Share,
   Alert,
   StyleSheet,
+  Animated,
 } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import {
+  ArrowLeft,
+  Upload,
+  Heart,
+  MapPin,
+  Tag,
+  Star,
+  Check,
+  X,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react-native';
+import { useWishlist } from '../context/WishlistContext';
 
 const { width } = Dimensions.get('window');
 
-// ─── Inline icon components (emoji-based, no extra deps) ─────────────────────
-const StarIcon    = ({ size, filled }) => <Text style={{ fontSize: size, color: filled ? '#f59e0b' : '#d1d5db' }}>★</Text>;
-const UserIcon    = ({ size })         => <Text style={{ fontSize: size }}>👤</Text>;
-const CalendarIcon= ({ size })         => <Text style={{ fontSize: size }}>📅</Text>;
-const MapPinIcon  = ({ size })         => <Text style={{ fontSize: size }}>📍</Text>;
-const ClockIcon   = ({ size })         => <Text style={{ fontSize: size }}>⏰</Text>;
-const CheckIcon   = ({ size })         => <Text style={{ fontSize: size, color: 'white' }}>✓</Text>;
-const XMarkIcon   = ({ size })         => <Text style={{ fontSize: size, color: 'white' }}>✗</Text>;
-const ShareIcon   = ({ size })         => <Text style={{ fontSize: size }}>📤</Text>;
-const WalletIcon  = ({ size })         => <Text style={{ fontSize: size }}>💳</Text>;
-const HeartIcon   = ({ size, solid })  => <Text style={{ fontSize: size }}>{solid ? '❤️' : '🤍'}</Text>;
-const BackIcon    = ({ size })         => <Text style={{ fontSize: size, color: '#1f2937' }}>←</Text>;
+// ─── Divider ──────────────────────────────────────────────────────────────────
+const Divider = () => <View style={{ height: 1, backgroundColor: '#f3f4f6', marginVertical: 4 }} />;
 
-// ─── Static reviews (no reviews endpoint yet) ─────────────────────────────────
-const STATIC_REVIEWS = [
-  {
-    id: 1,
-    name: 'Sarah Johnson',
-    rating: 5,
-    date: '2 days ago',
-    comment: 'Absolutely incredible experience! The island was breathtaking and the activities were perfectly organized.',
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=100&h=100&fit=crop&crop=face',
-  },
-  {
-    id: 2,
-    name: 'Mike Chen',
-    rating: 5,
-    date: '1 week ago',
-    comment: 'Best vacation ever! The destination was amazing and the service was top-notch. Highly recommend.',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-  },
-  {
-    id: 3,
-    name: 'Emma Wilson',
-    rating: 4,
-    date: '2 weeks ago',
-    comment: "Great concept and beautiful location. Would definitely book again!",
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
-  },
-  {
-    id: 4,
-    name: 'David Rodriguez',
-    rating: 5,
-    date: '3 weeks ago',
-    comment: 'Perfect for couples looking for adventure. My partner and I were amazed by the destination.',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
-  },
-];
+// ─── Section wrapper ─────────────────────────────────────────────────────────
+const Section = ({ children, style }) => (
+  <View style={[{ paddingHorizontal: 20, paddingVertical: 20 }, style]}>{children}</View>
+);
+const SectionTitle = ({ children }) => (
+  <Text style={styles.sectionTitle}>{children}</Text>
+);
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const PackageDetailScreen = () => {
   const route      = useRoute();
   const navigation = useNavigation();
+  const { isSaved, toggleWishlist } = useWishlist();
 
-  const [isFavorite,       setIsFavorite]       = useState(false);
-  const [activeTab,        setActiveTab]         = useState('overview');
-  const [currentImageIdx,  setCurrentImageIdx]   = useState(0);
-  const [expandedDays,     setExpandedDays]      = useState({});
+  const [currentImageIdx,    setCurrentImageIdx]    = useState(0);
+  const [highlightsExpanded, setHighlightsExpanded] = useState(false);
+  const [aboutExpanded,      setAboutExpanded]      = useState(false);
+  const [itineraryExpanded,  setItineraryExpanded]  = useState(true);
+  const [expandedDays,       setExpandedDays]       = useState({ 0: true });
+  const [showAllDays,        setShowAllDays]        = useState(false);
+  const [selectedDate,       setSelectedDate]       = useState(0);
+  const [inclExclExpanded,   setInclExclExpanded]   = useState(true);
+  const [showMoreInclExcl,   setShowMoreInclExcl]   = useState(false);
+  const [policiesExpanded,   setPoliciesExpanded]   = useState(true);
+  const [savingWishlist,     setSavingWishlist]      = useState(false);
+  const [addedAddons,        setAddedAddons]         = useState({});
 
-  // ── Guard: no package passed ──────────────────────────────────────────────
+  // Toast
+  const [toastMsg,  setToastMsg]  = useState('');
+  const [toastType, setToastType] = useState('save');
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimer   = useRef(null);
+
+  const showToast = useCallback((msg, type = 'save') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToastMsg(msg);
+    setToastType(type);
+    Animated.sequence([
+      Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1800),
+      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start();
+    toastTimer.current = setTimeout(() => setToastMsg(''), 2400);
+  }, [toastOpacity]);
+
   if (!route.params?.package) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -85,24 +86,23 @@ const PackageDetailScreen = () => {
     );
   }
 
-  // ── Extract backend fields with safe defaults ─────────────────────────────
   const pkg = route.params.package;
 
-  const title        = pkg.title        || 'Package';
-  const price        = pkg.price        || 0;
-  const location     = pkg.location     || '';
-  const duration     = pkg.duration     || '';
-  const rating       = pkg.rating       || 4.5;
-  const reviews      = pkg.reviews      || '';
-  const badge        = pkg.badge        || 'Popular';
-  const about        = pkg.about        || pkg.description || 'No description available.';
-  const highlights   = Array.isArray(pkg.highlights)  ? pkg.highlights  : [];
-  const inclusions   = Array.isArray(pkg.inclusions)  ? pkg.inclusions  : [];
-  const exclusions   = Array.isArray(pkg.exclusions)  ? pkg.exclusions  : [];
-  const itinerary    = Array.isArray(pkg.itinerary)   ? pkg.itinerary   : [];
-  const addons       = Array.isArray(pkg.addons)      ? pkg.addons      : [];
+  const title      = pkg.title      || 'Package';
+  const price      = pkg.price      || 0;
+  const location   = pkg.location   || '';
+  const rating     = pkg.rating     || 4.5;
+  const reviews    = pkg.reviews    || '20k reviews';
+  const booked     = pkg.booked     || '100K+ booked';
+  const about      = pkg.about      || pkg.description || 'No description available.';
+  const highlights = Array.isArray(pkg.highlights) ? pkg.highlights : [];
+  const inclusions = Array.isArray(pkg.inclusions) ? pkg.inclusions : [];
+  const exclusions = Array.isArray(pkg.exclusions) ? pkg.exclusions : [];
+  const itinerary  = Array.isArray(pkg.itinerary)  ? pkg.itinerary  : [];
+  const addons     = Array.isArray(pkg.addons)     ? pkg.addons     : [];
+  const dates      = Array.isArray(pkg.dates)      ? pkg.dates      : [];
+  const policies   = pkg.policies || {};
 
-  // Build image list — prefer images[], fall back to image_url
   const imageList =
     Array.isArray(pkg.images) && pkg.images.length > 0
       ? pkg.images
@@ -110,371 +110,476 @@ const PackageDetailScreen = () => {
       ? [pkg.image_url]
       : [];
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  const renderStars = (count) =>
-    [1, 2, 3, 4, 5].map(i => (
-      <StarIcon key={i} size={14} filled={i <= Math.round(count)} />
-    ));
-
-  const toggleDay = (day) =>
-    setExpandedDays(prev => ({ ...prev, [day]: !prev[day] }));
-
   const handleShare = async () => {
     try {
       await Share.share({ message: `Check out this amazing ${title} package for just ₹${price}!` });
-    } catch (e) {
-      console.log(e.message);
-    }
+    } catch (e) {}
   };
 
+  const toggleDay = (i) =>
+    setExpandedDays(prev => ({ ...prev, [i]: !prev[i] }));
+
   // ── Image Carousel ────────────────────────────────────────────────────────
-  const renderImageCarousel = () => {
-    if (!imageList.length) {
-      return (
-        <View style={{ width, height: width * 0.75, backgroundColor: '#E6F4EF', alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#94A3B8', fontSize: 14 }}>No images available</Text>
-        </View>
-      );
-    }
-
-    return (
-      <View style={{ position: 'relative' }}>
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={e => {
-            const idx = Math.round(e.nativeEvent.contentOffset.x / width);
-            setCurrentImageIdx(idx);
-          }}
-        >
-          {imageList.map((img, i) => (
-            <View key={i} style={{ width, height: width * 0.75 }}>
-              <Image source={{ uri: img }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-              <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.08)' }} />
+  const renderImageCarousel = () => (
+    <View style={{ backgroundColor: '#000' }}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={e => {
+          const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+          setCurrentImageIdx(idx);
+        }}
+      >
+        {imageList.length > 0
+          ? imageList.map((img, i) => (
+              <Image
+                key={i}
+                source={{ uri: img }}
+                style={{ width, height: width * 0.72 }}
+                resizeMode="cover"
+              />
+            ))
+          : (
+            <View style={{ width, height: width * 0.72, backgroundColor: '#E6F4EF', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#94A3B8' }}>No images available</Text>
             </View>
-          ))}
-        </ScrollView>
+          )
+        }
+      </ScrollView>
 
-        {/* Back button */}
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-        >
-          <BackIcon size={20} />
+      {/* Back */}
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <ArrowLeft size={20} color="#1f2937" strokeWidth={2.5} />
+      </TouchableOpacity>
+
+      {/* Share + Heart */}
+      <View style={styles.carouselActions}>
+        <TouchableOpacity onPress={handleShare} style={styles.actionBtn}>
+          <Upload size={17} color="#1f2937" strokeWidth={2} />
         </TouchableOpacity>
+        <TouchableOpacity
+          onPress={async () => {
+            if (savingWishlist) return;
+            setSavingWishlist(true);
+            const wasSaved = isSaved(pkg._id);
+            await toggleWishlist(pkg._id);
+            showToast(wasSaved ? 'Removed from wishlist' : 'Saved to wishlist', wasSaved ? 'remove' : 'save');
+            setSavingWishlist(false);
+          }}
+          style={styles.actionBtn}
+        >
+          {savingWishlist
+            ? <ActivityIndicator size="small" color="#1F8A70" />
+            : <Heart
+                size={17}
+                color={isSaved(pkg._id) ? '#EF4444' : '#1f2937'}
+                fill={isSaved(pkg._id) ? '#EF4444' : 'none'}
+                strokeWidth={2}
+              />
+          }
+        </TouchableOpacity>
+      </View>
 
-        {/* Share + Favourite */}
-        <View style={styles.carouselActions}>
-          <TouchableOpacity onPress={handleShare} style={styles.actionBtn}>
-            <ShareIcon size={18} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setIsFavorite(f => !f)} style={styles.actionBtn}>
-            <HeartIcon size={18} solid={isFavorite} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Dot indicators */}
+      {/* Dot indicators: active = filled white pill, inactive = white outline circle */}
+      {imageList.length > 1 && (
         <View style={styles.dotRow}>
           {imageList.map((_, i) => (
             <View
               key={i}
-              style={[styles.dot, { backgroundColor: currentImageIdx === i ? '#fff' : 'rgba(255,255,255,0.45)' }]}
+              style={currentImageIdx === i ? styles.dotActive : styles.dotInactive}
             />
           ))}
         </View>
-
-        {/* Price badge */}
-        <View style={styles.priceBadge}>
-          <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>₹{price.toLocaleString('en-IN')}</Text>
-          <Text style={{ color: '#dcfce7', fontSize: 11, textAlign: 'center' }}>per guest</Text>
-        </View>
-      </View>
-    );
-  };
-
-  // ── Tab: Overview ─────────────────────────────────────────────────────────
-  const renderOverview = () => (
-    <View style={{ paddingBottom: 24 }}>
-      {/* Quick Facts */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Quick Facts</Text>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          {[
-            { icon: <MapPinIcon size={22} />, label: location || 'Location', sub: 'Destination' },
-            { icon: <ClockIcon  size={22} />, label: duration || '—',        sub: 'Duration'    },
-            { icon: <StarIcon   size={22} filled />, label: String(rating),  sub: 'Rating'      },
-            { icon: <UserIcon   size={22} />, label: badge,                  sub: 'Badge'       },
-          ].map((f, i) => (
-            <View key={i} style={{ alignItems: 'center', flex: 1 }}>
-              <View style={[styles.factIcon, { backgroundColor: ['#dbeafe','#dcfce7','#fef9c3','#e9d5ff'][i] }]}>
-                {f.icon}
-              </View>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#1f2937', textAlign: 'center', marginTop: 4 }} numberOfLines={1}>
-                {f.label}
-              </Text>
-              <Text style={{ fontSize: 11, color: '#6b7280', textAlign: 'center' }}>{f.sub}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* About */}
-      <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-        <Text style={styles.sectionTitle}>About This Package</Text>
-        <Text style={{ fontSize: 15, lineHeight: 24, color: '#374151' }}>{about}</Text>
-      </View>
-
-      {/* Highlights */}
-      {highlights.length > 0 && (
-        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-          <View style={[styles.inclusionBlock, { backgroundColor: '#EFF6FF' }]}>
-            <Text style={[styles.inclusionTitle, { color: '#1E40AF' }]}>Highlights</Text>
-            {highlights.map((h, i) => (
-              <View key={i} style={styles.inclusionRow}>
-                <View style={[styles.inclusionDot, { backgroundColor: '#3b82f6' }]}>
-                  <CheckIcon size={12} />
-                </View>
-                <Text style={{ flex: 1, color: '#1E40AF', fontSize: 14 }}>{h}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Inclusions */}
-      {inclusions.length > 0 && (
-        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-          <View style={[styles.inclusionBlock, { backgroundColor: '#f0fdf4' }]}>
-            <Text style={[styles.inclusionTitle, { color: '#166534' }]}>What's Included</Text>
-            {inclusions.map((inc, i) => (
-              <View key={i} style={styles.inclusionRow}>
-                <View style={[styles.inclusionDot, { backgroundColor: '#10b981' }]}>
-                  <CheckIcon size={12} />
-                </View>
-                <Text style={{ flex: 1, color: '#166534', fontSize: 14 }}>{inc}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Exclusions */}
-      {exclusions.length > 0 && (
-        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-          <View style={[styles.inclusionBlock, { backgroundColor: '#fef2f2' }]}>
-            <Text style={[styles.inclusionTitle, { color: '#991b1b' }]}>Not Included</Text>
-            {exclusions.map((exc, i) => (
-              <View key={i} style={styles.inclusionRow}>
-                <View style={[styles.inclusionDot, { backgroundColor: '#ef4444' }]}>
-                  <XMarkIcon size={12} />
-                </View>
-                <Text style={{ flex: 1, color: '#991b1b', fontSize: 14 }}>{exc}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Add-ons */}
-      {addons.length > 0 && (
-        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-          <Text style={styles.sectionTitle}>Add-ons</Text>
-          {addons.map((addon, i) => (
-            <View key={i} style={styles.addonCard}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: '600', color: '#1f2937', fontSize: 15 }}>{addon.name}</Text>
-                {Array.isArray(addon.details) && addon.details.length > 0 && (
-                  <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 2 }}>
-                    {addon.details.join(' · ')}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.addonPrice}>
-                <Text style={{ color: '#1F8A70', fontWeight: '700', fontSize: 15 }}>
-                  +₹{addon.price?.toLocaleString('en-IN') || 0}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
       )}
     </View>
   );
 
-  // ── Tab: Itinerary ────────────────────────────────────────────────────────
-  const renderItinerary = () => {
-    if (!itinerary.length) {
-      return (
-        <View style={{ padding: 32, alignItems: 'center' }}>
-          <Text style={{ color: '#6b7280', fontSize: 14 }}>No itinerary available for this package.</Text>
+  // ── Title Block ───────────────────────────────────────────────────────────
+  const renderTitleBlock = () => (
+    <View style={styles.titleBlock}>
+      <Text style={styles.titleText}>{title}</Text>
+
+      {/* Rating row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 }}>
+        <Star size={14} color="#4CAF50" fill="#4CAF50" />
+        <Text style={{ fontSize: 13, fontWeight: '700', color: '#1f2937' }}>{rating}</Text>
+        <TouchableOpacity>
+          <Text style={styles.reviewLink}>{reviews}</Text>
+        </TouchableOpacity>
+        <Text style={{ color: '#9ca3af', fontSize: 13 }}>•</Text>
+        <Text style={{ color: '#6b7280', fontSize: 13 }}>{booked}</Text>
+      </View>
+
+      {/* Location + Price row */}
+      <View style={styles.metaRow}>
+        {/* Destination */}
+        <View style={styles.metaItem}>
+          <MapPin size={18} color="#6b7280" strokeWidth={1.8} />
+          <View>
+            <Text style={styles.metaValue}>{location || 'Location'}</Text>
+            <Text style={styles.metaLabel}>Destination</Text>
+          </View>
         </View>
-      );
-    }
+
+        <View style={styles.metaDividerV} />
+
+        {/* Price */}
+        <View style={styles.metaItem}>
+          <Tag size={18} color="#6b7280" strokeWidth={1.8} />
+          <View>
+            <Text style={styles.metaValue}>From ₹{price.toLocaleString('en-IN')}/guest</Text>
+            <Text style={styles.metaLabel}>Price</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  // ── Highlights ────────────────────────────────────────────────────────────
+  const renderHighlights = () => {
+    if (!highlights.length) return null;
+    const visible = highlightsExpanded ? highlights : highlights.slice(0, 3);
+    return (
+      <View style={styles.highlightBox}>
+        {visible.map((h, i) => (
+          <View key={i} style={styles.checkRow}>
+            <Check size={14} color="#1F8A70" strokeWidth={2.5} />
+            <Text style={styles.checkText}>{h}</Text>
+          </View>
+        ))}
+        {highlights.length > 3 && (
+          <TouchableOpacity onPress={() => setHighlightsExpanded(!highlightsExpanded)}>
+            <Text style={styles.showMoreLink}>
+              {highlightsExpanded ? 'Show Less' : 'Show More'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  // ── About ─────────────────────────────────────────────────────────────────
+  const renderAbout = () => {
+    const SHORT = 120;
+    const isLong = about.length > SHORT;
+    const displayText = aboutExpanded || !isLong ? about : about.slice(0, SHORT) + '...';
+    return (
+      <Section style={{ paddingTop: 0 }}>
+        <SectionTitle>About this trip</SectionTitle>
+        <Text style={styles.bodyText}>{displayText}</Text>
+        {isLong && (
+          <TouchableOpacity onPress={() => setAboutExpanded(!aboutExpanded)}>
+            <Text style={styles.showMoreLink}>{aboutExpanded ? 'Read Less' : 'Read More'}</Text>
+          </TouchableOpacity>
+        )}
+      </Section>
+    );
+  };
+
+  // ── Itinerary ─────────────────────────────────────────────────────────────
+  const renderItinerary = () => {
+    if (!itinerary.length) return null;
+    const visibleDays = showAllDays ? itinerary : itinerary.slice(0, 1);
 
     return (
-      <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
-        <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>Day-by-Day Itinerary</Text>
-        {itinerary.map((day, i) => (
-          <View key={i} style={styles.dayCard}>
-            <TouchableOpacity
-              onPress={() => toggleDay(day.day ?? i)}
-              style={styles.dayHeader}
-              activeOpacity={0.8}
-            >
-              <View style={styles.dayBadge}>
-                <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>
-                  {day.day ?? i + 1}
-                </Text>
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{ fontWeight: '600', color: '#1f2937', fontSize: 15 }}>
-                  Day {day.day ?? i + 1}: {day.title || 'Activities'}
-                </Text>
-                {Array.isArray(day.points) && day.points.length > 0 && (
-                  <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>
-                    {day.points[0]}
-                  </Text>
-                )}
-              </View>
-              <Text style={{ color: '#1F8A70', fontSize: 18 }}>
-                {expandedDays[day.day ?? i] ? '▲' : '▼'}
-              </Text>
-            </TouchableOpacity>
+      <Section style={styles.graySection}>
+        <View style={styles.collapsibleHeader}>
+          <SectionTitle>Itinerary</SectionTitle>
+          <TouchableOpacity onPress={() => setItineraryExpanded(!itineraryExpanded)}>
+            {itineraryExpanded ? <ChevronUp /> : <ChevronDown />}
+          </TouchableOpacity>
+        </View>
 
-            {expandedDays[day.day ?? i] && Array.isArray(day.points) && (
-              <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-                {day.points.map((point, j) => (
-                  <View key={j} style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 10 }}>
-                    <View style={styles.pointDot} />
-                    <Text style={{ flex: 1, color: '#374151', fontSize: 14, lineHeight: 20 }}>{point}</Text>
+        {itineraryExpanded && (
+          <>
+            {visibleDays.map((day, i) => (
+              <View key={i} style={styles.dayBlock}>
+                {/* Day header */}
+                <TouchableOpacity style={styles.dayHeader} onPress={() => toggleDay(i)} activeOpacity={0.8}>
+                  <View style={styles.dayIconBox}>
+                    <Check size={18} color="#1F8A70" strokeWidth={2.5} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.dayTitle}>Day {day.day ?? i + 1}</Text>
+                    <Text style={styles.daySubtitle}>{day.title || 'Activities'}</Text>
+                  </View>
+                  {expandedDays[i]
+                    ? <ChevronUp size={16} color="#9ca3af" />
+                    : <ChevronDown size={16} color="#9ca3af" />
+                  }
+                </TouchableOpacity>
+
+                {/* Day points */}
+                {expandedDays[i] && Array.isArray(day.points) && day.points.map((point, j) => (
+                  <View key={j} style={styles.checkRow}>
+                    <Check size={14} color="#1F8A70" strokeWidth={2.5} />
+                    <Text style={styles.checkText}>{point}</Text>
                   </View>
                 ))}
               </View>
+            ))}
+
+            {itinerary.length > 1 && (
+              <TouchableOpacity onPress={() => setShowAllDays(!showAllDays)}>
+                <Text style={[styles.showMoreLink, { textAlign: 'center', marginTop: 8 }]}>
+                  {showAllDays ? 'Show less' : `Show full ${itinerary.length} days`}
+                </Text>
+              </TouchableOpacity>
             )}
-          </View>
-        ))}
-      </View>
+          </>
+        )}
+      </Section>
     );
   };
 
-  // ── Tab: Reviews ──────────────────────────────────────────────────────────
-  const renderReviews = () => (
-    <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
-      {/* Summary */}
-      <View style={styles.reviewSummary}>
-        <Text style={{ fontSize: 40, fontWeight: '800', color: '#1f2937' }}>4.8</Text>
-        <View style={{ flexDirection: 'row', marginTop: 4 }}>{renderStars(5)}</View>
-        <Text style={{ color: '#6b7280', marginTop: 4 }}>Based on 127 reviews</Text>
-        <Text style={{ color: '#9ca3af', fontSize: 13, marginTop: 2 }}>96% of guests recommend this</Text>
-      </View>
+  // ── Available Dates & Pricing ─────────────────────────────────────────────
+  const renderDates = () => {
+    if (!dates.length) return null;
+    return (
+      <Section>
+        <SectionTitle>Available Dates &amp; Pricing</SectionTitle>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
+          {dates.map((d, i) => (
+            <TouchableOpacity
+              key={i}
+              onPress={() => setSelectedDate(i)}
+              style={[styles.dateCard, selectedDate === i && styles.dateCardSelected]}
+            >
+              {selectedDate === i && (
+                <View style={styles.dateRadio}>
+                  <View style={styles.dateRadioInner} />
+                </View>
+              )}
+              <Text style={[styles.dateText, selectedDate === i && { color: '#1F8A70' }]}>
+                {d.label || d.date}
+              </Text>
+              <Text style={[styles.datePriceText, selectedDate === i && { color: '#1F8A70' }]}>
+                ₹{(d.price || price).toLocaleString('en-IN')}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </Section>
+    );
+  };
 
-      {STATIC_REVIEWS.map(rev => (
-        <View key={rev.id} style={styles.reviewCard}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            <Image source={{ uri: rev.avatar }} style={styles.reviewAvatar} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '600', color: '#1f2937' }}>{rev.name}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                <View style={{ flexDirection: 'row', marginRight: 8 }}>{renderStars(rev.rating)}</View>
-                <Text style={{ fontSize: 12, color: '#9ca3af' }}>{rev.date}</Text>
-              </View>
-            </View>
-          </View>
-          <Text style={{ color: '#374151', lineHeight: 20, fontSize: 14 }}>{rev.comment}</Text>
+  const renderInclExcl = () => {
+    if (!inclusions.length && !exclusions.length) return null;
+
+    const combined = [
+      ...inclusions.map(t => ({ text: t, included: true })),
+      ...exclusions.map(t => ({ text: t, included: false })),
+    ];
+    const visible = showMoreInclExcl ? combined : combined.slice(0, 4);
+
+    return (
+      <Section style={styles.graySection}>
+        <View style={styles.collapsibleHeader}>
+          <SectionTitle>Inclusions / Exclusions</SectionTitle>
+          <TouchableOpacity onPress={() => setInclExclExpanded(!inclExclExpanded)}>
+            {inclExclExpanded ? <ChevronUp /> : <ChevronDown />}
+          </TouchableOpacity>
         </View>
-      ))}
-    </View>
-  );
 
-  // ── Tab content router ────────────────────────────────────────────────────
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'overview':  return renderOverview();
-      case 'itinerary': return renderItinerary();
-      case 'reviews':   return renderReviews();
-      default:          return renderOverview();
-    }
+        {inclExclExpanded && (
+          <>
+            {visible.map((item, i) => (
+              <View key={i} style={styles.checkRow}>
+                {item.included
+                  ? <Check size={14} color="#1F8A70" strokeWidth={2.5} />
+                  : <X size={14} color="#ef4444" strokeWidth={2.5} />
+                }
+                <Text style={styles.checkText}>{item.text}</Text>
+              </View>
+            ))}
+            {combined.length > 4 && (
+              <TouchableOpacity onPress={() => setShowMoreInclExcl(!showMoreInclExcl)}>
+                <Text style={styles.showMoreLink}>{showMoreInclExcl ? 'Show Less' : 'Show More'}</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+      </Section>
+    );
+  };
+  const renderAddons = () => {
+    if (!addons.length) return null;
+    return (
+      <Section>
+        <Text style={styles.sectionTitle}>
+          Add-ons - <Text style={{ fontStyle: 'italic', fontWeight: '400' }}>Make your trip memorable</Text>
+        </Text>
+
+        {addons.map((addon, i) => {
+          const isAdded = addedAddons[i];
+          return (
+            <View key={i} style={styles.addonCard}>
+              {/* Top row: text + image */}
+              <View style={styles.addonTopRow}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.addonName}>{addon.name}</Text>
+                  <Text style={styles.addonSub}>{addon.subtitle || (Array.isArray(addon.details) ? addon.details.join(' & ') : '')}</Text>
+                </View>
+                {addon.image ? (
+                  <Image source={{ uri: addon.image }} style={styles.addonImage} />
+                ) : (
+                  <View style={[styles.addonImage, { backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 24 }}>📷</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Chips row */}
+              {Array.isArray(addon.chips) && addon.chips.length > 0 && (
+                <View style={styles.chipsRow}>
+                  {addon.chips.map((chip, j) => (
+                    <View key={j} style={styles.chip}>
+                      <Text style={styles.chipIcon}>{chip.icon || '•'}</Text>
+                      <Text style={styles.chipText}>{chip.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {/* Fallback: details as chips */}
+              {(!Array.isArray(addon.chips) || addon.chips.length === 0) && Array.isArray(addon.details) && addon.details.length > 0 && (
+                <View style={styles.chipsRow}>
+                  {addon.details.map((d, j) => (
+                    <View key={j} style={styles.chip}>
+                      <Text style={styles.chipText}>{d}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Price + Add button */}
+              <View style={styles.addonFooter}>
+                <Text style={styles.addonPrice}>
+                  Just <Text style={{ fontWeight: '700' }}>₹{(addon.price || 0).toLocaleString('en-IN')}</Text>
+                </Text>
+                <TouchableOpacity
+                  style={[styles.addBtn, isAdded && styles.addBtnAdded]}
+                  onPress={() => setAddedAddons(prev => ({ ...prev, [i]: !prev[i] }))}
+                >
+                  <Text style={[styles.addBtnText, isAdded && { color: '#fff' }]}>
+                    {isAdded ? 'Added ✓' : 'Add'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Watch Demo Videos */}
+              <TouchableOpacity style={styles.demoBtn}>
+                <Text style={styles.demoBtnText}>Watch Demo Videos</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </Section>
+    );
+  };
+  const renderPolicies = () => {
+    const cancellation = policies.cancellation || [];
+    const payment      = policies.payment      || [];
+    if (!cancellation.length && !payment.length) return null;
+
+    return (
+      <Section style={styles.graySection}>
+        <View style={styles.collapsibleHeader}>
+          <SectionTitle>Policies</SectionTitle>
+          <TouchableOpacity onPress={() => setPoliciesExpanded(!policiesExpanded)}>
+            {policiesExpanded ? <ChevronUp /> : <ChevronDown />}
+          </TouchableOpacity>
+        </View>
+
+        {policiesExpanded && (
+          <>
+            {cancellation.length > 0 && (
+              <>
+                <Text style={styles.policySubTitle}>Cancellation Policy</Text>
+                {cancellation.map((p, i) => (
+                  <View key={i} style={styles.checkRow}>
+                    <Check size={14} color="#1F8A70" strokeWidth={2.5} />
+                    <Text style={styles.checkText}>{p}</Text>
+                  </View>
+                ))}
+              </>
+            )}
+            {payment.length > 0 && (
+              <>
+                <Text style={[styles.policySubTitle, { marginTop: 14 }]}>Payment Policy</Text>
+                {payment.map((p, i) => (
+                  <View key={i} style={styles.checkRow}>
+                    <Check size={14} color="#1F8A70" strokeWidth={2.5} />
+                    <Text style={styles.checkText}>{p}</Text>
+                  </View>
+                ))}
+              </>
+            )}
+          </>
+        )}
+      </Section>
+    );
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-        {/* Image Carousel */}
+      <ScrollView showsVerticalScrollIndicator={false} bounces style={{ flex: 1 }}>
+
+        {/* Hero image — sits behind the content sheet */}
         {renderImageCarousel()}
 
-        {/* Title + Meta */}
-        <View style={styles.titleBlock}>
-          <Text style={styles.titleText}>{title}</Text>
-          {location ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-              <MapPinIcon size={14} />
-              <Text style={{ color: '#6b7280', fontSize: 14, marginLeft: 4 }}>{location}</Text>
-            </View>
-          ) : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-            <View style={{ flexDirection: 'row', marginRight: 8 }}>{renderStars(rating)}</View>
-            <Text style={{ color: '#6b7280', fontSize: 13 }}>
-              {rating} {reviews ? `• ${reviews}` : ''}
-            </Text>
-          </View>
+        {/* Content sheet — overlaps image with rounded top corners */}
+        <View style={styles.contentSheet}>
+          {renderTitleBlock()}
+          <Divider />
+          {renderHighlights()}
+          {renderAbout()}
+          <Divider />
+          {renderItinerary()}
+          <Divider />
+          {renderDates()}
+          <Divider />
+          {renderInclExcl()}
+          <Divider />
+          {renderAddons()}
+          <Divider />
+          {renderPolicies()}
+          <View style={{ height: 100 }} />
         </View>
 
-        {/* Tab Bar */}
-        <View style={styles.tabBar}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingVertical: 10 }}>
-            {[
-              { key: 'overview',  label: 'Overview'  },
-              { key: 'itinerary', label: 'Itinerary' },
-              { key: 'reviews',   label: 'Reviews'   },
-            ].map(tab => (
-              <TouchableOpacity
-                key={tab.key}
-                onPress={() => setActiveTab(tab.key)}
-                style={[styles.tabBtn, activeTab === tab.key && styles.tabBtnActive]}
-              >
-                <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Tab Content */}
-        <View style={{ paddingTop: 20, backgroundColor: 'white' }}>
-          {renderTabContent()}
-        </View>
-
-        {/* Bottom spacing for fixed button */}
-        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Fixed Book Now Button */}
+      {/* Fixed bottom bar */}
       <View style={styles.bookBar}>
         <View>
-          <Text style={{ fontSize: 12, color: '#6b7280' }}>Total price</Text>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: '#1f2937' }}>
-            ₹{price.toLocaleString('en-IN')}
-          </Text>
+          <Text style={{ fontSize: 12, color: '#6b7280' }}>From</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+            <Text style={styles.bookPrice}>₹{price.toLocaleString('en-IN')}</Text>
+            <Text style={{ fontSize: 13, color: '#6b7280' }}>/Guest</Text>
+          </View>
         </View>
         <TouchableOpacity
           style={styles.bookBtn}
           onPress={() =>
-            Alert.alert(
-              'Book Package',
-              `You're about to book "${title}" for ₹${price.toLocaleString('en-IN')}`,
-              [{ text: 'OK' }],
-            )
+            Alert.alert('Book Package', `You're about to book "${title}" for ₹${price.toLocaleString('en-IN')}`, [{ text: 'OK' }])
           }
         >
-          <WalletIcon size={20} />
           <Text style={styles.bookBtnText}>Book Now</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Toast */}
+      {toastMsg ? (
+        <Animated.View
+          style={[styles.toast, toastType === 'save' ? styles.toastSave : styles.toastRemove, { opacity: toastOpacity }]}
+          pointerEvents="none"
+        >
+          <Text style={styles.toastText}>{toastMsg}</Text>
+        </Animated.View>
+      ) : null}
     </View>
   );
 };
@@ -484,8 +589,8 @@ const styles = StyleSheet.create({
   // Carousel
   backBtn: {
     position: 'absolute', top: 48, left: 16,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center', justifyContent: 'center',
   },
   carouselActions: {
@@ -493,142 +598,198 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: 10,
   },
   actionBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center', justifyContent: 'center',
   },
   dotRow: {
-    position: 'absolute', bottom: 14, left: 16,
-    flexDirection: 'row', gap: 6,
+    position: 'absolute', bottom: 12,
+    width: '100%', flexDirection: 'row',
+    justifyContent: 'center', alignItems: 'center', gap: 6,
   },
-  dot: {
-    width: 8, height: 8, borderRadius: 4,
+  // Active: bright white rounded square
+  dotActive: {
+    width: 8, height: 8, borderRadius: 2,
+    backgroundColor: '#fff',
   },
-  priceBadge: {
-    position: 'absolute', bottom: 14, right: 16,
-    backgroundColor: '#1F8A70',
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2, shadowRadius: 4, elevation: 4,
+  // Inactive: same shape, low opacity
+  dotInactive: {
+    width: 8, height: 8, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
+
+  // Content sheet — overlaps image
+  contentSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+
   // Title block
   titleBlock: {
-    paddingHorizontal: 16, paddingVertical: 20,
-    backgroundColor: 'white',
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16,
+    backgroundColor: '#fff',
   },
   titleText: {
-    fontSize: 24, fontWeight: '800', color: '#1f2937',
+    fontSize: 22, fontWeight: '800', color: '#111827', letterSpacing: -0.3,
   },
-  // Tab bar
-  tabBar: {
-    backgroundColor: 'white',
-    borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+  reviewLink: {
+    color: '#1F8A70', fontSize: 13, fontWeight: '600',
+    textDecorationLine: 'underline',
   },
-  tabBtn: {
-    paddingHorizontal: 22, paddingVertical: 10,
-    borderRadius: 20, backgroundColor: '#f3f4f6',
-  },
-  tabBtnActive: {
-    backgroundColor: '#1F8A70',
-  },
-  tabLabel: {
-    fontWeight: '600', color: '#6b7280', fontSize: 14,
-  },
-  tabLabelActive: {
-    color: 'white',
-  },
-  // Cards
-  card: {
-    backgroundColor: '#f8fafc',
-    marginHorizontal: 16, borderRadius: 16,
-    padding: 16, marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18, fontWeight: '700',
-    color: '#1f2937', marginBottom: 12,
-  },
-  factIcon: {
-    width: 46, height: 46, borderRadius: 23,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  // Inclusions / exclusions
-  inclusionBlock: {
-    borderRadius: 14, padding: 16,
-  },
-  inclusionTitle: {
-    fontSize: 16, fontWeight: '700', marginBottom: 10,
-  },
-  inclusionRow: {
-    flexDirection: 'row', alignItems: 'center', marginBottom: 8,
-  },
-  inclusionDot: {
-    width: 22, height: 22, borderRadius: 11,
-    alignItems: 'center', justifyContent: 'center', marginRight: 10,
-  },
-  // Add-ons
-  addonCard: {
+  metaRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f8fafc', borderRadius: 12,
-    padding: 14, marginBottom: 10,
-    borderWidth: 1, borderColor: '#e2e8f0',
+    marginTop: 14, backgroundColor: '#f8fafc',
+    borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14,
+    gap: 12,
   },
-  addonPrice: {
-    backgroundColor: '#E6F4EF', paddingHorizontal: 10,
-    paddingVertical: 6, borderRadius: 10,
-  },
-  // Itinerary
-  dayCard: {
-    backgroundColor: 'white', borderRadius: 14,
+  metaItem: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 },
+  metaIcon: { fontSize: 18 },
+  metaValue: { fontSize: 13, fontWeight: '600', color: '#1f2937' },
+  metaLabel: { fontSize: 11, color: '#9ca3af', marginTop: 1 },
+  metaDividerV: { width: 1, height: 32, backgroundColor: '#e5e7eb' },
+
+  // Highlight box
+  highlightBox: {
+    marginHorizontal: 20, marginVertical: 4,
+    backgroundColor: '#f9fafb', borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
     borderWidth: 1, borderColor: '#f3f4f6',
-    marginBottom: 12, overflow: 'hidden',
   },
+
+  // Shared row
+  checkRow: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    gap: 8, paddingVertical: 4,
+  },
+  checkText: {
+    flex: 1, fontSize: 14, color: '#374151', lineHeight: 20,
+  },
+
+  showMoreLink: {
+    color: '#1F8A70', fontSize: 13, fontWeight: '600',
+    marginTop: 6, textDecorationLine: 'underline',
+  },
+
+  // Section
+  sectionTitle: {
+    fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 12,
+  },
+  bodyText: { fontSize: 14, lineHeight: 22, color: '#374151' },
+  graySection: { backgroundColor: '#f9fafb' },
+  collapsibleHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 12,
+  },
+
+  // Itinerary
+  dayBlock: { marginBottom: 12 },
   dayHeader: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 14, backgroundColor: '#f8fafc',
+    gap: 10, marginBottom: 8,
   },
-  dayBadge: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: '#1F8A70',
+  dayIconBox: {
+    width: 32, height: 32,
     alignItems: 'center', justifyContent: 'center',
   },
-  pointDot: {
-    width: 7, height: 7, borderRadius: 4,
-    backgroundColor: '#1F8A70', marginRight: 10, marginTop: 7,
+  dayTitle: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  daySubtitle: { fontSize: 12, color: '#6b7280', marginTop: 1 },
+
+  // Date cards
+  dateCard: {
+    borderWidth: 1, borderColor: '#e5e7eb',
+    borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12,
+    marginRight: 10, minWidth: 130,
   },
-  // Reviews
-  reviewSummary: {
-    backgroundColor: '#f8fafc', borderRadius: 16,
-    padding: 20, marginBottom: 20, alignItems: 'center',
+  dateCardSelected: {
+    borderColor: '#1F8A70', backgroundColor: '#f0fdf4',
   },
-  reviewCard: {
-    backgroundColor: 'white', borderRadius: 14,
-    borderWidth: 1, borderColor: '#f3f4f6',
+  dateRadio: {
+    width: 16, height: 16, borderRadius: 8,
+    borderWidth: 1.5, borderColor: '#1F8A70',
+    alignItems: 'center', justifyContent: 'center',
+    position: 'absolute', top: 10, right: 10,
+  },
+  dateRadioInner: {
+    width: 8, height: 8, borderRadius: 4, backgroundColor: '#1F8A70',
+  },
+  dateText: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 },
+  datePriceText: { fontSize: 14, fontWeight: '700', color: '#374151' },
+
+  // Add-ons
+  addonCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14, borderWidth: 1, borderColor: '#e5e7eb',
     padding: 16, marginBottom: 14,
   },
-  reviewAvatar: {
-    width: 46, height: 46, borderRadius: 23, marginRight: 12,
+  addonTopRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  addonName: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 3 },
+  addonSub: { fontSize: 13, color: '#6b7280', lineHeight: 18 },
+  addonImage: { width: 68, height: 68, borderRadius: 10 },
+  chipsRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#f3f4f6', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 6,
   },
+  chipIcon: { fontSize: 14 },
+  chipText: { fontSize: 12, color: '#374151', fontWeight: '500' },
+  addonFooter: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 10,
+  },
+  addonPrice: { fontSize: 14, color: '#374151' },
+  addBtn: {
+    borderWidth: 1.5, borderColor: '#1F8A70',
+    borderRadius: 8, paddingHorizontal: 24, paddingVertical: 8,
+  },
+  addBtnAdded: { backgroundColor: '#1F8A70' },
+  addBtnText: { color: '#1F8A70', fontWeight: '700', fontSize: 14 },
+  demoBtn: {
+    backgroundColor: '#f3f4f6', borderRadius: 8,
+    paddingVertical: 10, alignItems: 'center',
+  },
+  demoBtnText: { color: '#374151', fontWeight: '600', fontSize: 13 },
+
+  // Policies
+  policySubTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 8 },
+
   // Book bar
   bookBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     borderTopWidth: 1, borderTopColor: '#f3f4f6',
-    paddingHorizontal: 20, paddingVertical: 14,
+    paddingHorizontal: 20, paddingVertical: 12,
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between',
   },
+  bookPrice: { fontSize: 20, fontWeight: '800', color: '#111827' },
   bookBtn: {
     backgroundColor: '#1F8A70',
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 28, paddingVertical: 14,
-    borderRadius: 14, gap: 8,
+    paddingHorizontal: 32, paddingVertical: 14,
+    borderRadius: 12,
     shadowColor: '#1F8A70', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
-  bookBtnText: {
-    color: 'white', fontSize: 16, fontWeight: '700',
+  bookBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  // Toast
+  toast: {
+    position: 'absolute', bottom: 100, alignSelf: 'center',
+    paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: 24,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18, shadowRadius: 6, elevation: 8,
   },
+  toastSave:   { backgroundColor: '#1F8A70' },
+  toastRemove: { backgroundColor: '#374151' },
+  toastText:   { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
 
 export default PackageDetailScreen;

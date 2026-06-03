@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,14 @@ import {
   StyleSheet,
   Modal,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import Video from 'react-native-video';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import './../../android/app/src/utils/globalFont.js';
 import { packagesAPI, reelsAPI, SERVER_URL } from '../services/api';
+import { useWishlist } from '../context/WishlistContext';
 
 // Resolve relative /uploads/... paths to full URLs
 const resolveImage = (url) => {
@@ -46,7 +48,36 @@ const HomeScreen = () => {
   const [loading,        setLoading]        = useState(true);
   const [refreshing,     setRefreshing]     = useState(false);
   const [activeVideo,    setActiveVideo]    = useState(null);
-  const [wishlist,       setWishlist]       = useState({});
+
+  // ── Wishlist from context ────────────────────────────────────────────────
+  const { isSaved, toggleWishlist } = useWishlist();
+
+  // ── Toast ────────────────────────────────────────────────────────────────
+  const [toastMsg,   setToastMsg]  = useState('');
+  const [toastType,  setToastType] = useState('save');
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimer   = useRef(null);
+
+  const showToast = useCallback((msg, type = 'save') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToastMsg(msg);
+    setToastType(type);
+    Animated.sequence([
+      Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1800),
+      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start();
+    toastTimer.current = setTimeout(() => setToastMsg(''), 2400);
+  }, [toastOpacity]);
+
+  const handleToggleWishlist = useCallback(async (packageId) => {
+    const wasSaved = isSaved(packageId);
+    await toggleWishlist(packageId);
+    showToast(
+      wasSaved ? 'Removed from wishlist' : 'Saved to wishlist ❤️',
+      wasSaved ? 'remove' : 'save',
+    );
+  }, [isSaved, toggleWishlist, showToast]);
 
   // ── Data fetching ───────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -92,17 +123,6 @@ const HomeScreen = () => {
     fetchData();
   }, [fetchData]);
 
-  // ── Wishlist helpers ────────────────────────────────────────────────────────
-  const toggleWishlist = (id, type) =>
-    setWishlist(prev => {
-      const key = `${type}_${id}`;
-      const next = { ...prev };
-      if (next[key]) delete next[key]; else next[key] = true;
-      return next;
-    });
-
-  const isInWishlist = (id, type) => !!wishlist[`${type}_${id}`];
-
   const openPackage = pkg => navigation.navigate('PackageDetails', { package: pkg });
 
   // ── Renderers ───────────────────────────────────────────────────────────────
@@ -114,9 +134,9 @@ const HomeScreen = () => {
         <Image source={{ uri: item.image_url }} style={{ width: 160, height: 160, borderRadius: 12 }} resizeMode="cover" />
         <TouchableOpacity
           style={{ position: 'absolute', top: 8, right: 8, padding: 6 }}
-          onPress={() => toggleWishlist(item.id, 'recent')}
+          onPress={() => {}}
         >
-          <Heart size={18} color={isInWishlist(item.id, 'recent') ? '#EF4444' : '#fff'} fill={isInWishlist(item.id, 'recent') ? '#EF4444' : 'none'} />
+          <Heart size={18} color="#fff" fill="none" />
         </TouchableOpacity>
       </View>
       <Text style={{ marginTop: 8, fontWeight: '600', color: '#0F172A', fontSize: 14 }} numberOfLines={1}>{item.title}</Text>
@@ -137,8 +157,8 @@ const HomeScreen = () => {
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#1F8A70' }}>{item.badge}</Text>
           </View>
         ) : null}
-        <TouchableOpacity style={{ position: 'absolute', top: 8, right: 8, padding: 6 }} onPress={() => toggleWishlist(item._id, 'pkg')}>
-          <Heart size={18} color={isInWishlist(item._id, 'pkg') ? '#EF4444' : '#fff'} fill={isInWishlist(item._id, 'pkg') ? '#EF4444' : 'none'} />
+        <TouchableOpacity style={{ position: 'absolute', top: 8, right: 8, padding: 6 }} onPress={() => handleToggleWishlist(item._id)}>
+          <Heart size={18} color={isSaved(item._id) ? '#EF4444' : '#fff'} fill={isSaved(item._id) ? '#EF4444' : 'none'} />
         </TouchableOpacity>
       </View>
       <Text style={{ marginTop: 8, fontWeight: '600', color: '#0F172A', fontSize: 14 }} numberOfLines={1}>{item.title}</Text>
@@ -312,6 +332,32 @@ const HomeScreen = () => {
       </ScrollView>
 
       <VideoModal visible={!!activeVideo} item={activeVideo} onClose={() => setActiveVideo(null)} />
+
+      {/* Toast */}
+      {toastMsg ? (
+        <Animated.View
+          style={[
+            {
+              position: 'absolute',
+              bottom: 90,
+              alignSelf: 'center',
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              borderRadius: 24,
+              elevation: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.18,
+              shadowRadius: 6,
+              backgroundColor: toastType === 'save' ? '#1F8A70' : '#374151',
+            },
+            { opacity: toastOpacity },
+          ]}
+          pointerEvents="none"
+        >
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{toastMsg}</Text>
+        </Animated.View>
+      ) : null}
     </SafeAreaProvider>
   );
 };

@@ -37,8 +37,20 @@ const LoginScreen = () => {
       await login(email.trim().toLowerCase(), password);
       navigation.replace('Main');
     } catch (err) {
-      const message =
-        err?.response?.data?.message || 'Login failed. Please try again.';
+      console.log('[Login] error code:', err?.code);
+      console.log('[Login] error message:', err?.message);
+      console.log('[Login] response:', JSON.stringify(err?.response?.data));
+
+      let message = 'Login failed. Please try again.';
+      if (err?.response?.data?.message) {
+        message = err.response.data.message;
+      } else if (err?.code === 'ERR_NETWORK' || err?.code === 'ECONNREFUSED') {
+        message = `Cannot reach server.\n\nIP: http://192.168.1.16:5001\n\nMake sure:\n• Backend is running\n• Phone & Mac on same WiFi`;
+      } else if (err?.code === 'ECONNABORTED') {
+        message = 'Request timed out. Check your network.';
+      } else if (err?.message) {
+        message = err.message;
+      }
       Alert.alert('Login Failed', message);
     } finally {
       setLoading(false);

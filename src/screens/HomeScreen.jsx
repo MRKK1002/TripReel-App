@@ -42,9 +42,17 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const REEL_COL_WIDTH = (SCREEN_WIDTH - 32 - 12) / 2;
 
 // Resolve relative /uploads/... paths to absolute URLs
+// Also fix admin-uploaded absolute URLs that have wrong hostname
 const resolveImage = url => {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http')) {
+    // Replace hostname if it's a local upload URL with wrong IP
+    if (url.includes('/uploads/')) {
+      const path = url.substring(url.indexOf('/uploads/'));
+      return `${SERVER_URL}${path}`;
+    }
+    return url;
+  }
   return `${SERVER_URL}${url}`;
 };
 

@@ -33,6 +33,7 @@ import {
   SERVER_URL,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
 import { useRecentlyViewed, timeAgo } from '../hooks/useRecentlyViewed';
 import './../../android/app/src/utils/globalFont.js';
 
@@ -393,6 +394,7 @@ const ReelCard = ({ item, onPress }) => {
 const HomeScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { toggleWishlist, isSaved } = useWishlist();
   const { recentlyViewed, addViewed } = useRecentlyViewed();
 
   // ── State ───────────────────────────────────────────────────────────────────
@@ -402,7 +404,6 @@ const HomeScreen = () => {
   const [reels, setReels] = useState([]); // video reels (2-col grid)
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [wishlist, setWishlist] = useState({});
   const [activeVideo, setActiveVideo] = useState(null);
 
   // ── Data fetching ───────────────────────────────────────────────────────────
@@ -439,8 +440,12 @@ const HomeScreen = () => {
       }
       setCategoryMap(map);
 
-      // ── Popular Destinations → top-rated packages sorted by avgRating desc ──
-      const popularPkgs = destRes.data?.packages || [];
+      // ── Popular Destinations → resolve images before storing ──────────────
+      const popularPkgs = (destRes.data?.packages || []).map(p => ({
+        ...p,
+        image_url: resolveImage(p.image_url),
+        images: (p.images || []).map(resolveImage).filter(Boolean),
+      }));
       setPopularDests(popularPkgs);
 
       // ── Reels ─────────────────────────────────────────────────────────────
@@ -484,12 +489,10 @@ const HomeScreen = () => {
   }, [fetchData]);
 
   // ── Wishlist helpers ────────────────────────────────────────────────────────
-  const toggleWishlist = id =>
-    setWishlist(prev => ({ ...prev, [id]: !prev[id] }));
 
   const openPackage = pkg => {
     addViewed(pkg);
-    navigation.navigate('PackageDetails', { package: pkg });
+    navigation.navigate('DestinationDetail', { destination: pkg });
   };
 
   const categoryEntries = Object.entries(categoryMap);
@@ -535,7 +538,7 @@ const HomeScreen = () => {
                 <RecentCard
                   item={item}
                   onPress={() =>
-                    navigation.navigate('PackageDetails', { package: item })
+                    navigation.navigate('DestinationDetail', { destination: item })
                   }
                 />
               )}
@@ -570,7 +573,7 @@ const HomeScreen = () => {
                     })
                   }
                   onWishlist={() => toggleWishlist(item._id)}
-                  inWishlist={!!wishlist[item._id]}
+                  inWishlist={isSaved(item._id)}
                 />
               )}
               keyExtractor={item => String(item._id)}
@@ -605,7 +608,7 @@ const HomeScreen = () => {
                     item={item}
                     onPress={() => openPackage(item)}
                     onWishlist={() => toggleWishlist(item._id)}
-                    inWishlist={!!wishlist[item._id]}
+                    inWishlist={isSaved(item._id)}
                   />
                 )}
                 keyExtractor={item => item._id}
@@ -655,7 +658,7 @@ const HomeScreen = () => {
                     })
                   }
                   onWishlist={() => toggleWishlist(item._id)}
-                  inWishlist={!!wishlist[item._id]}
+                  inWishlist={isSaved(item._id)}
                   wide
                 />
               )}

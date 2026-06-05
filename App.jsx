@@ -54,6 +54,10 @@ import PopularDestinationScreen from './src/screens/PopularDestinationScreen';
 import CuratedPackagesScreen from './src/screens/CuratedPackagesScreen';
 import ExperiencesNearYouScreen from './src/screens/ExperiencesNearYouScreen';
 import GuestFavoritesScreen from './src/screens/GuestFavoritesScreen';
+import GetHelpScreen from './src/screens/GetHelpScreen';
+import PrivacyScreen from './src/screens/PrivacyScreen';
+import PaymentHelpScreen from './src/screens/PaymentHelpScreen';
+import ReportIssueScreen from './src/screens/ReportIssueScreen';
 const { width } = Dimensions.get('window');
 
 function TabIcon({ icon, label, focused }) {
@@ -329,6 +333,26 @@ export default function App() {
               <Stack.Screen
                 name="Messages"
                 component={MessagesScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="GetHelp"
+                component={GetHelpScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Privacy"
+                component={PrivacyScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="PaymentHelp"
+                component={PaymentHelpScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="ReportIssue"
+                component={ReportIssueScreen}
                 options={{ headerShown: false }}
               />
             </Stack.Navigator>

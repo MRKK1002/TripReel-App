@@ -35,7 +35,13 @@ import './../../android/app/src/utils/globalFont.js';
 
 const resolveUrl = url => {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http')) {
+    if (url.includes('/uploads/')) {
+      const path = url.substring(url.indexOf('/uploads/'));
+      return `${SERVER_URL}${path}`;
+    }
+    return url;
+  }
   return `${SERVER_URL}${url.startsWith('/') ? url : '/' + url}`;
 };
 

@@ -36,6 +36,7 @@ import {
   MapPin,
   ChevronDown,
   Lock,
+  Bell,
 } from 'lucide-react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useAuth } from '../context/AuthContext';
@@ -472,25 +473,32 @@ const ProfileScreen = () => {
       onPress: () => setSettingsVisible(true),
     },
     {
+      id: 'notifications',
+      title: 'Notifications',
+      description: 'Your alerts & updates',
+      icon: Bell,
+      onPress: () => navigation.navigate('Notification'),
+    },
+    {
       id: 'help',
       title: 'Get Help',
       description: 'Support & FAQs',
       icon: Info,
-      onPress: () => {},
+      onPress: () => navigation.navigate('GetHelp'),
     },
     {
       id: 'privacy',
       title: 'Privacy',
       description: 'Privacy policy & data',
       icon: FileText,
-      onPress: () => {},
+      onPress: () => navigation.navigate('Privacy'),
     },
     {
       id: 'payment',
       title: 'Payment Help',
       description: 'Payment related issues',
       icon: FileText,
-      onPress: () => {},
+      onPress: () => navigation.navigate('PaymentHelp'),
     },
   ];
 

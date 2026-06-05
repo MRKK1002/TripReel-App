@@ -86,6 +86,11 @@ const PackageCard = ({ item, onPress, onWishlist, inWishlist }) => {
   const price = item.pricing?.adultPrice || item.price || 0;
   const priceText = price ? `₹${Number(price).toLocaleString('en-IN')}` : null;
 
+  // Popular badge — earned via bookings or good rating (shows everywhere)
+  const showBadge =
+    (item.bookingCount || 0) >= 1 ||
+    ((item.avgRating || 0) >= 4.0 && (item.reviewCount || 0) >= 1);
+
   return (
     <TouchableOpacity
       style={{ width: CARD_WIDTH, marginRight: 12 }}
@@ -98,9 +103,9 @@ const PackageCard = ({ item, onPress, onWishlist, inWishlist }) => {
           style={{ width: CARD_WIDTH, height: CARD_HEIGHT, borderRadius: 14 }}
           resizeMode="cover"
         />
-        {item.badge ? (
+        {showBadge ? (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{item.badge}</Text>
+            <Text style={styles.badgeText}>{item.badge || 'Popular'}</Text>
           </View>
         ) : null}
         <TouchableOpacity
@@ -151,7 +156,7 @@ const PackageCard = ({ item, onPress, onWishlist, inWishlist }) => {
 };
 
 // ─── Recently Viewed card ─────────────────────────────────────────────────────
-const RecentCard = ({ item, onPress }) => {
+const RecentCard = ({ item, onPress, inWishlist, onWishlist }) => {
   const imageUri =
     resolveImage(item.image_url) ||
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop';
@@ -181,8 +186,13 @@ const RecentCard = ({ item, onPress }) => {
             justifyContent: 'center',
           }}
           hitSlop={6}
+          onPress={onWishlist}
         >
-          <Heart size={14} color="#9CA3AF" fill="none" />
+          <Heart
+            size={14}
+            color={inWishlist ? '#EF4444' : '#9CA3AF'}
+            fill={inWishlist ? '#EF4444' : 'none'}
+          />
         </TouchableOpacity>
       </View>
       <Text
@@ -223,6 +233,10 @@ const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
     resolveImage(item.image_url || item.image) ||
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop';
   const price = item.pricing?.adultPrice || item.price || 0;
+  // Popular badge — earned via bookings or good rating
+  const showPopularBadge =
+    (item.bookingCount || 0) >= 1 ||
+    ((item.avgRating || 0) >= 4.0 && (item.reviewCount || 0) >= 1);
 
   return (
     <TouchableOpacity
@@ -236,10 +250,12 @@ const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
           style={{ width: 165, height: 155, borderRadius: 14 }}
           resizeMode="cover"
         />
-        {/* Teal badge — solid teal bg, white text */}
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>Popular</Text>
-        </View>
+        {/* Teal badge — only shown when badge is earned */}
+        {showPopularBadge && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>Popular</Text>
+          </View>
+        )}
         {/* White circle heart — matches design */}
         <TouchableOpacity
           style={styles.heartBtn}
@@ -471,8 +487,13 @@ const HomeScreen = () => {
         }),
         // Popular Destinations — scored by bookingCount + avgRating
         packagesAPI.getPopular(10),
-        // Experience Reels
-        reelsAPI.getAll({ limit: 20 }),
+        // Experience Reels — filtered by user's state on home, all shown in View All
+        effectiveState
+          ? reelsAPI.getByLocation(
+              { country: effectiveCountry, state: effectiveState },
+              { limit: 20 },
+            )
+          : reelsAPI.getAll({ limit: 20 }),
       ];
 
       const [pkgRes, destRes, reelRes] = await Promise.all(calls);
@@ -510,8 +531,21 @@ const HomeScreen = () => {
         nearbyPkgs.length > 0 ? nearbyPkgs.slice(0, 8) : allPkgs.slice(0, 8),
       );
 
-      // ── Experience Reels — show all (already fetched without filter) ───────
-      setReels(reelRes.data?.reels || []);
+      // ── Experience Reels — show state-filtered, fallback to all ─────────
+      const stateReels = reelRes.data?.reels || [];
+      if (stateReels.length > 0) {
+        setReels(stateReels);
+      } else if (effectiveState) {
+        // No reels for this state, fetch all as fallback
+        try {
+          const fallbackRes = await reelsAPI.getAll({ limit: 20 });
+          setReels(fallbackRes.data?.reels || []);
+        } catch {
+          setReels([]);
+        }
+      } else {
+        setReels(stateReels);
+      }
     } catch {
       // Silently fail — sections will just be empty
     } finally {
@@ -614,6 +648,8 @@ const HomeScreen = () => {
                       destination: item,
                     })
                   }
+                  inWishlist={isSaved(item._id)}
+                  onWishlist={() => toggleWishlist(item._id)}
                 />
               )}
               keyExtractor={item => item._id}
@@ -759,12 +795,18 @@ const HomeScreen = () => {
         {activeVideo ? (
           <View style={styles.modalContainer}>
             <Video
-              source={{ uri: activeVideo.video }}
+              source={{
+                uri: resolveImage(activeVideo.video),
+              }}
               style={StyleSheet.absoluteFillObject}
               resizeMode="contain"
               muted={false}
               repeat
               paused={false}
+              onError={e =>
+                console.log('Video playback error:', JSON.stringify(e))
+              }
+              onLoad={() => console.log('Video loaded OK')}
             />
             <TouchableOpacity
               style={styles.closeBtn}
@@ -781,7 +823,7 @@ const HomeScreen = () => {
                 <View style={styles.modalUser}>
                   {activeVideo.user.avatar ? (
                     <Image
-                      source={{ uri: activeVideo.user.avatar }}
+                      source={{ uri: resolveImage(activeVideo.user.avatar) }}
                       style={styles.modalAvatar}
                     />
                   ) : null}

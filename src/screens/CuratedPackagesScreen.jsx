@@ -21,6 +21,7 @@ import {
   Clock,
 } from 'lucide-react-native';
 import { packagesAPI, SERVER_URL } from '../services/api';
+import { useWishlist } from '../context/WishlistContext';
 
 const BADGE_COLORS = {
   Trending: { bg: '#FEF3C7', text: '#D97706' },
@@ -28,11 +29,17 @@ const BADGE_COLORS = {
   New: { bg: '#EDE9FE', text: '#7C3AED' },
 };
 
-// Convert relative /uploads/... paths to full URLs
+// Convert relative /uploads/... paths to full URLs (also fix wrong hostname)
 const resolveImage = url => {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
-  return `${SERVER_URL}${url}`;
+  if (url.startsWith('http')) {
+    if (url.includes('/uploads/')) {
+      const path = url.substring(url.indexOf('/uploads/'));
+      return `${SERVER_URL}${path}`;
+    }
+    return url;
+  }
+  return `${SERVER_URL}${url.startsWith('/') ? url : '/' + url}`;
 };
 
 const CuratedPackagesScreen = () => {
@@ -45,22 +52,37 @@ const CuratedPackagesScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [wishlist, setWishlist] = useState({});
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchPackages = useCallback(async () => {
-    try {
-      setError('');
-      // Always fetch ALL approved packages — show everything
-      const res = await packagesAPI.getAll({ limit: 200 });
-      setPackages(res.data?.packages || []);
-    } catch {
-      setError('Failed to load packages. Pull down to retry.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [categoryName]);
+  // Global wishlist context
+  const { isSaved, toggleWishlist } = useWishlist();
+
+  const fetchPackages = useCallback(
+    async (pageNum = 1, append = false) => {
+      try {
+        setError('');
+        const res = await packagesAPI.getAll({ limit: 20, page: pageNum });
+        const newPkgs = res.data?.packages || [];
+        if (append) {
+          setPackages(prev => [...prev, ...newPkgs]);
+        } else {
+          setPackages(newPkgs);
+        }
+        setHasMore(newPkgs.length === 20);
+        setPage(pageNum);
+      } catch {
+        if (!append) setError('Failed to load packages. Pull down to retry.');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
+    },
+    [categoryName],
+  );
 
   useEffect(() => {
     fetchPackages();
@@ -68,11 +90,15 @@ const CuratedPackagesScreen = () => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchPackages();
+    fetchPackages(1, false);
   };
 
-  const toggleWishlist = id =>
-    setWishlist(prev => ({ ...prev, [id]: !prev[id] }));
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      setLoadingMore(true);
+      fetchPackages(page + 1, true);
+    }
+  };
 
   const filtered = packages.filter(
     p =>
@@ -81,6 +107,10 @@ const CuratedPackagesScreen = () => {
   );
 
   const renderItem = ({ item }) => {
+    // Only show badge if package earned it (bookings or good rating)
+    const hasBadge =
+      (item.bookingCount || 0) >= 1 ||
+      ((item.avgRating || 0) >= 4.0 && (item.reviewCount || 0) >= 1);
     const badgeKey = item.badge || 'Popular';
     const badge = BADGE_COLORS[badgeKey] || BADGE_COLORS.Popular;
 
@@ -131,23 +161,25 @@ const CuratedPackagesScreen = () => {
             style={{ width: '100%', height: 200 }}
             resizeMode="cover"
           />
-          <View
-            style={{
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              backgroundColor: badge.bg,
-              borderRadius: 20,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-            }}
-          >
-            <Text
-              style={{ color: badge.text, fontSize: 11, fontWeight: '700' }}
+          {hasBadge && (
+            <View
+              style={{
+                position: 'absolute',
+                top: 12,
+                left: 12,
+                backgroundColor: badge.bg,
+                borderRadius: 20,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+              }}
             >
-              {badgeKey}
-            </Text>
-          </View>
+              <Text
+                style={{ color: badge.text, fontSize: 11, fontWeight: '700' }}
+              >
+                {badgeKey}
+              </Text>
+            </View>
+          )}
           <TouchableOpacity
             onPress={() => toggleWishlist(item._id)}
             style={{
@@ -161,8 +193,8 @@ const CuratedPackagesScreen = () => {
           >
             <Heart
               size={18}
-              color={wishlist[item._id] ? '#EF4444' : '#9CA3AF'}
-              fill={wishlist[item._id] ? '#EF4444' : 'none'}
+              color={isSaved(item._id) ? '#EF4444' : '#9CA3AF'}
+              fill={isSaved(item._id) ? '#EF4444' : 'none'}
             />
           </TouchableOpacity>
         </View>
@@ -352,12 +384,21 @@ const CuratedPackagesScreen = () => {
           keyExtractor={item => item._id}
           contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
               colors={['#1F8A70']}
             />
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#1F8A70" />
+              </View>
+            ) : null
           }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingTop: 60 }}>

@@ -23,22 +23,30 @@ const PLACEHOLDER =
   'https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?w=400';
 
 // ── Resolve image URL ─────────────────────────────────────────────────────────
-const resolveImage = (pkg) => {
+const resolveImage = pkg => {
   if (!pkg) return PLACEHOLDER;
 
-  // Try images[] array first
-  if (Array.isArray(pkg.images) && pkg.images.length > 0) {
-    const img = pkg.images[0];
-    if (!img) return PLACEHOLDER;
-    if (img.startsWith('http')) return img;
-    // relative path — prepend server URL
-    return `${SERVER_URL}${img.startsWith('/') ? '' : '/'}${img}`;
+  // Helper to fix any URL (wrong hostname or relative path)
+  const fixUrl = url => {
+    if (!url) return null;
+    if (url.startsWith('http')) {
+      if (url.includes('/uploads/')) {
+        const path = url.substring(url.indexOf('/uploads/'));
+        return `${SERVER_URL}${path}`;
+      }
+      return url;
+    }
+    return `${SERVER_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  // Use image_url first (main cover image)
+  if (pkg.image_url) {
+    return fixUrl(pkg.image_url) || PLACEHOLDER;
   }
 
-  // Fall back to image_url
-  if (pkg.image_url) {
-    if (pkg.image_url.startsWith('http')) return pkg.image_url;
-    return `${SERVER_URL}${pkg.image_url.startsWith('/') ? '' : '/'}${pkg.image_url}`;
+  // Fall back to first in images[] array
+  if (Array.isArray(pkg.images) && pkg.images.length > 0) {
+    return fixUrl(pkg.images[0]) || PLACEHOLDER;
   }
 
   return PLACEHOLDER;
@@ -50,38 +58,52 @@ const WishlistScreen = () => {
   const { wishlists, loading, fetchWishlists, toggleWishlist } = useWishlist();
 
   // ── Toast ─────────────────────────────────────────────────────────────────
-  const [toastMsg,  setToastMsg]  = useState('');
+  const [toastMsg, setToastMsg] = useState('');
   const toastOpacity = useRef(new Animated.Value(0)).current;
-  const toastTimer   = useRef(null);
+  const toastTimer = useRef(null);
 
-  const showToast = useCallback((msg) => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToastMsg(msg);
-    Animated.sequence([
-      Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.delay(1800),
-      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-    ]).start();
-    toastTimer.current = setTimeout(() => setToastMsg(''), 2400);
-  }, [toastOpacity]);
+  const showToast = useCallback(
+    msg => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      setToastMsg(msg);
+      Animated.sequence([
+        Animated.timing(toastOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.delay(1800),
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      toastTimer.current = setTimeout(() => setToastMsg(''), 2400);
+    },
+    [toastOpacity],
+  );
 
   // ── Open full package detail ──────────────────────────────────────────────
   const [loadingPkg, setLoadingPkg] = useState(null); // stores _id while loading
 
-  const openPackage = useCallback(async (pkgObj) => {
-    if (!pkgObj?._id) return;
-    try {
-      setLoadingPkg(pkgObj._id);
-      const res = await packagesAPI.getById(pkgObj._id);
-      const fullPkg = res.data?.package || res.data;
-      navigation.navigate('PackageDetails', { package: fullPkg });
-    } catch {
-      // fallback: navigate with partial data we already have
-      navigation.navigate('PackageDetails', { package: pkgObj });
-    } finally {
-      setLoadingPkg(null);
-    }
-  }, [navigation]);
+  const openPackage = useCallback(
+    async pkgObj => {
+      if (!pkgObj?._id) return;
+      try {
+        setLoadingPkg(pkgObj._id);
+        const res = await packagesAPI.getById(pkgObj._id);
+        const fullPkg = res.data?.package || res.data;
+        navigation.navigate('PackageDetails', { package: fullPkg });
+      } catch {
+        // fallback: navigate with partial data we already have
+        navigation.navigate('PackageDetails', { package: pkgObj });
+      } finally {
+        setLoadingPkg(null);
+      }
+    },
+    [navigation],
+  );
 
   const onRefresh = useCallback(() => {
     fetchWishlists();
@@ -102,7 +124,10 @@ const WishlistScreen = () => {
                 await wishlistAPI.deleteWishlist(wishlistId);
                 await fetchWishlists();
               } catch (err) {
-                Alert.alert('Error', err?.response?.data?.message || 'Could not delete wishlist.');
+                Alert.alert(
+                  'Error',
+                  err?.response?.data?.message || 'Could not delete wishlist.',
+                );
               }
             },
           },
@@ -117,23 +142,50 @@ const WishlistScreen = () => {
     return (
       <SafeAreaProvider style={{ flex: 1, backgroundColor: '#fff' }}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 32,
+          }}
+        >
           <Heart size={56} color="#E5E7EB" strokeWidth={1.5} />
-          <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 16, textAlign: 'center' }}>
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: '700',
+              color: '#111827',
+              marginTop: 16,
+              textAlign: 'center',
+            }}
+          >
             Save your favourites
           </Text>
-          <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center', lineHeight: 22 }}>
+          <Text
+            style={{
+              fontSize: 14,
+              color: '#6B7280',
+              marginTop: 8,
+              textAlign: 'center',
+              lineHeight: 22,
+            }}
+          >
             Log in to save packages and access them anytime.
           </Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('Login')}
             style={{
-              marginTop: 24, backgroundColor: '#1F8A70',
-              paddingHorizontal: 36, paddingVertical: 14,
+              marginTop: 24,
+              backgroundColor: '#1F8A70',
+              paddingHorizontal: 36,
+              paddingVertical: 14,
               borderRadius: 14,
             }}
           >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Log In</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
+              Log In
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaProvider>
@@ -145,9 +197,13 @@ const WishlistScreen = () => {
     return (
       <SafeAreaProvider style={{ flex: 1, backgroundColor: '#fff' }}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+        >
           <ActivityIndicator size="large" color="#1F8A70" />
-          <Text style={{ color: '#6B7280', marginTop: 12 }}>Loading wishlists…</Text>
+          <Text style={{ color: '#6B7280', marginTop: 12 }}>
+            Loading wishlists…
+          </Text>
         </View>
       </SafeAreaProvider>
     );
@@ -166,33 +222,71 @@ const WishlistScreen = () => {
         {/* Header */}
         <View
           style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-            paddingHorizontal: 24, paddingTop: 52, paddingBottom: 16,
-            borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 24,
+            paddingTop: 52,
+            paddingBottom: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: '#F3F4F6',
           }}
         >
-          <Text style={{ fontSize: 24, fontWeight: '700', color: '#0F172A' }}>Wishlists</Text>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: '#0F172A' }}>
+            Wishlists
+          </Text>
         </View>
         <ScrollView
-          contentContainerStyle={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor="#1F8A70" />}
+          contentContainerStyle={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 32,
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={onRefresh}
+              tintColor="#1F8A70"
+            />
+          }
         >
           <Heart size={56} color="#E5E7EB" strokeWidth={1.5} />
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginTop: 16, textAlign: 'center' }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: '700',
+              color: '#111827',
+              marginTop: 16,
+              textAlign: 'center',
+            }}
+          >
             No saved packages yet
           </Text>
-          <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center', lineHeight: 22 }}>
+          <Text
+            style={{
+              fontSize: 14,
+              color: '#6B7280',
+              marginTop: 8,
+              textAlign: 'center',
+              lineHeight: 22,
+            }}
+          >
             Tap the ❤️ on any package to save it here.
           </Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('Explore')}
             style={{
-              marginTop: 24, backgroundColor: '#1F8A70',
-              paddingHorizontal: 36, paddingVertical: 14,
+              marginTop: 24,
+              backgroundColor: '#1F8A70',
+              paddingHorizontal: 36,
+              paddingVertical: 14,
               borderRadius: 14,
             }}
           >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Browse Packages</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
+              Browse Packages
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaProvider>
@@ -208,18 +302,29 @@ const WishlistScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor="#1F8A70" />
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={onRefresh}
+            tintColor="#1F8A70"
+          />
         }
       >
         {/* Header */}
         <View
           style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-            paddingHorizontal: 24, paddingTop: 52, paddingBottom: 16,
-            borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 24,
+            paddingTop: 52,
+            paddingBottom: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: '#F3F4F6',
           }}
         >
-          <Text style={{ fontSize: 24, fontWeight: '700', color: '#0F172A' }}>Wishlists</Text>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: '#0F172A' }}>
+            Wishlists
+          </Text>
         </View>
 
         {/* Wishlists */}
@@ -232,15 +337,26 @@ const WishlistScreen = () => {
               {/* Wishlist header row */}
               <View
                 style={{
-                  flexDirection: 'row', alignItems: 'center',
-                  justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingHorizontal: 20,
+                  marginBottom: 12,
                 }}
               >
                 <View>
-                  <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827' }}>
+                  <Text
+                    style={{
+                      fontSize: 17,
+                      fontWeight: '700',
+                      color: '#111827',
+                    }}
+                  >
                     {wl.name}
                   </Text>
-                  <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
+                  <Text
+                    style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}
+                  >
                     {packages.length} saved
                   </Text>
                 </View>
@@ -255,8 +371,10 @@ const WishlistScreen = () => {
               {/* Package cards grid */}
               <View
                 style={{
-                  flexDirection: 'row', flexWrap: 'wrap',
-                  paddingHorizontal: 16, gap: 12,
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  paddingHorizontal: 16,
+                  gap: 12,
                 }}
               >
                 {packages.map(pkg => {
@@ -275,8 +393,10 @@ const WishlistScreen = () => {
                       {/* Image */}
                       <View
                         style={{
-                          width: '100%', aspectRatio: 1,
-                          borderRadius: 16, overflow: 'hidden',
+                          width: '100%',
+                          aspectRatio: 1,
+                          borderRadius: 16,
+                          overflow: 'hidden',
                           backgroundColor: '#F3F4F6',
                         }}
                       >
@@ -287,12 +407,16 @@ const WishlistScreen = () => {
                         />
                         {/* Loading overlay while fetching full package */}
                         {loadingPkg === pkgObj._id && (
-                          <View style={{
-                            position: 'absolute', inset: 0,
-                            backgroundColor: 'rgba(0,0,0,0.35)',
-                            alignItems: 'center', justifyContent: 'center',
-                            borderRadius: 16,
-                          }}>
+                          <View
+                            style={{
+                              position: 'absolute',
+                              inset: 0,
+                              backgroundColor: 'rgba(0,0,0,0.35)',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: 16,
+                            }}
+                          >
                             <ActivityIndicator color="#fff" size="small" />
                           </View>
                         )}
@@ -303,10 +427,15 @@ const WishlistScreen = () => {
                             showToast('Removed from wishlist');
                           }}
                           style={{
-                            position: 'absolute', top: 8, right: 8,
-                            width: 32, height: 32, borderRadius: 16,
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            width: 32,
+                            height: 32,
+                            borderRadius: 16,
                             backgroundColor: 'rgba(255,255,255,0.9)',
-                            alignItems: 'center', justifyContent: 'center',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}
                         >
                           <Heart size={16} color="#EF4444" fill="#EF4444" />
@@ -315,13 +444,25 @@ const WishlistScreen = () => {
 
                       {/* Info */}
                       <Text
-                        style={{ marginTop: 8, fontSize: 13, fontWeight: '600', color: '#111827' }}
+                        style={{
+                          marginTop: 8,
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: '#111827',
+                        }}
                         numberOfLines={2}
                       >
                         {pkgTitle}
                       </Text>
                       {pkgPrice != null && (
-                        <Text style={{ fontSize: 12, color: '#1F8A70', fontWeight: '700', marginTop: 2 }}>
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            color: '#1F8A70',
+                            fontWeight: '700',
+                            marginTop: 2,
+                          }}
+                        >
                           ₹{pkgPrice.toLocaleString('en-IN')}
                         </Text>
                       )}

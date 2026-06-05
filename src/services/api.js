@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://192.168.1.48:5001/api';
-export const SERVER_URL = 'http://192.168.1.48:5001';
+const BASE_URL = 'http://192.168.0.127:5001/api';
+export const SERVER_URL = 'http://192.168.0.127:5001';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -120,6 +120,8 @@ export const tripBookingsAPI = {
   create: data => api.post('/trip-bookings', data),
   getMy: () => api.get('/trip-bookings/my'),
   getById: id => api.get(`/trip-bookings/${id}`),
+  getRefundPreview: id => api.get(`/trip-bookings/${id}/refund-preview`),
+  cancel: (id, data) => api.post(`/trip-bookings/${id}/cancel`, data),
 };
 
 // Platform settings — public (gst_percent for display)
@@ -133,6 +135,12 @@ export const couponsAPI = {
   getForBatch: batchId => api.get('/coupons', { params: { batchId } }),
   // Validate a coupon code
   validate: data => api.post('/coupons/validate', data),
+};
+
+// Report Issue endpoints (user reports problems)
+export const reportsAPI = {
+  create: data => api.post('/reports', data),
+  getMy: () => api.get('/reports/my'),
 };
 
 export default api;

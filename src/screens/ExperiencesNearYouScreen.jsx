@@ -22,11 +22,18 @@ import {
 } from 'lucide-react-native';
 import { experiencesAPI, packagesAPI, SERVER_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
 
 const resolveImage = url => {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
-  return `${SERVER_URL}${url}`;
+  if (url.startsWith('http')) {
+    if (url.includes('/uploads/')) {
+      const path = url.substring(url.indexOf('/uploads/'));
+      return `${SERVER_URL}${path}`;
+    }
+    return url;
+  }
+  return `${SERVER_URL}${url.startsWith('/') ? url : '/' + url}`;
 };
 
 const BADGE_COLORS = {
@@ -43,8 +50,10 @@ const ExperiencesNearYouScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [wishlist, setWishlist] = useState({});
   const [error, setError] = useState('');
+
+  // Global wishlist context
+  const { isSaved, toggleWishlist } = useWishlist();
 
   const userState = (user?.state || '').trim();
 
@@ -95,9 +104,6 @@ const ExperiencesNearYouScreen = () => {
     fetchItems();
   };
 
-  const toggleWishlist = id =>
-    setWishlist(prev => ({ ...prev, [id]: !prev[id] }));
-
   const screenTitle = userState
     ? `Experiences in ${userState}`
     : 'Experiences Near You';
@@ -113,6 +119,10 @@ const ExperiencesNearYouScreen = () => {
   const renderItem = ({ item }) => {
     const id = item._id || item.id;
     const title = item.title || item.name || '';
+    // Only show badge if earned (has bookings or good rating)
+    const hasBadge =
+      (item.bookingCount || 0) >= 1 ||
+      ((item.avgRating || 0) >= 4.0 && (item.reviewCount || 0) >= 1);
     const badgeKey = item.badge || 'Popular';
     const badge = BADGE_COLORS[badgeKey] || BADGE_COLORS.Popular;
     const imageUri =
@@ -151,23 +161,25 @@ const ExperiencesNearYouScreen = () => {
             style={{ width: '100%', height: 200 }}
             resizeMode="cover"
           />
-          <View
-            style={{
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              backgroundColor: badge.bg,
-              borderRadius: 20,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-            }}
-          >
-            <Text
-              style={{ color: badge.text, fontSize: 11, fontWeight: '700' }}
+          {hasBadge && (
+            <View
+              style={{
+                position: 'absolute',
+                top: 12,
+                left: 12,
+                backgroundColor: badge.bg,
+                borderRadius: 20,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+              }}
             >
-              {badgeKey}
-            </Text>
-          </View>
+              <Text
+                style={{ color: badge.text, fontSize: 11, fontWeight: '700' }}
+              >
+                {badgeKey}
+              </Text>
+            </View>
+          )}
           <TouchableOpacity
             onPress={() => toggleWishlist(id)}
             style={{
@@ -181,8 +193,8 @@ const ExperiencesNearYouScreen = () => {
           >
             <Heart
               size={18}
-              color={wishlist[id] ? '#EF4444' : '#9CA3AF'}
-              fill={wishlist[id] ? '#EF4444' : 'none'}
+              color={isSaved(id) ? '#EF4444' : '#9CA3AF'}
+              fill={isSaved(id) ? '#EF4444' : 'none'}
             />
           </TouchableOpacity>
         </View>

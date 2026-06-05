@@ -14,7 +14,12 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { SERVER_URL, batchesAPI, settingsAPI } from '../services/api';
+import {
+  SERVER_URL,
+  batchesAPI,
+  settingsAPI,
+  packagesAPI,
+} from '../services/api';
 import { useWishlist } from '../context/WishlistContext';
 import {
   ArrowLeft,
@@ -32,10 +37,16 @@ import './../../android/app/src/utils/globalFont.js';
 
 const { width } = Dimensions.get('window');
 
-// Resolve relative /uploads/... paths to full URLs
+// Resolve relative /uploads/... paths to full URLs (also fix wrong hostname)
 const resolveUrl = url => {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http')) {
+    if (url.includes('/uploads/')) {
+      const path = url.substring(url.indexOf('/uploads/'));
+      return `${SERVER_URL}${path}`;
+    }
+    return url;
+  }
   const path = url.startsWith('/') ? url : `/${url}`;
   return `${SERVER_URL}${path}`;
 };
@@ -44,8 +55,10 @@ const DestinationDetailScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   // Handle both navigation patterns: { destination } or { package }
-  const destination = route.params?.destination || route.params?.package;
+  const routeData = route.params?.destination || route.params?.package;
 
+  const [destination, setDestination] = useState(routeData);
+  const [pageLoading, setPageLoading] = useState(false);
   const [showMoreHighlights, setShowMoreHighlights] = useState(false);
   const [showFullAbout, setShowFullAbout] = useState(false);
   const [showFullItinerary, setShowFullItinerary] = useState(false);
@@ -61,6 +74,26 @@ const DestinationDetailScreen = () => {
   const { isSaved, toggleWishlist } = useWishlist();
   const wishlisted = isSaved(destination?._id);
   const handleToggleWishlist = () => toggleWishlist(destination?._id);
+
+  // ── Fetch full package data if opened with partial data (e.g. from Recently Viewed)
+  useEffect(() => {
+    if (!routeData?._id) return;
+    // If data is complete (has pricing or highlights), no need to re-fetch
+    if (routeData.pricing || routeData.highlights || routeData.inclusions) {
+      setDestination(routeData);
+      return;
+    }
+    // Fetch full package from API
+    setPageLoading(true);
+    packagesAPI
+      .getById(routeData._id)
+      .then(res => {
+        const pkg = res.data?.package;
+        if (pkg) setDestination(pkg);
+      })
+      .catch(() => {})
+      .finally(() => setPageLoading(false));
+  }, [routeData?._id]);
 
   // ── Dynamic batches (real dates from API) ──────────────────────────────────
   const [batches, setBatches] = useState([]);
@@ -180,11 +213,33 @@ const DestinationDetailScreen = () => {
 
   const handleShare = async () => {
     try {
+      const price = destination.pricing?.adultPrice || destination.price || '';
+      const priceText = price
+        ? ` starting from ₹${Number(price).toLocaleString('en-IN')}`
+        : '';
       await Share.share({
-        message: `Check out ${destination.title} - ${destination.priceLabel}`,
+        message: `🌴 Check out "${destination.title}" on TripReel!\n\n📍 ${
+          destination.location || ''
+        }${priceText}\n\nDownload TripReel app to book: https://tripreel.com/package/${
+          destination._id
+        }`,
+        title: destination.title,
       });
     } catch (_) {}
   };
+
+  if (pageLoading || !destination) {
+    return (
+      <SafeAreaProvider style={{ flex: 1, backgroundColor: '#fff' }}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <View
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <ActivityIndicator size="large" color="#1F8A70" />
+        </View>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -290,15 +345,17 @@ const DestinationDetailScreen = () => {
                     width: 40,
                     height: 40,
                     borderRadius: 20,
-                    backgroundColor: 'rgba(0,0,0,0.35)',
+                    backgroundColor: wishlisted
+                      ? 'rgba(255,255,255,0.95)'
+                      : 'rgba(0,0,0,0.35)',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
                   <Heart
                     size={18}
-                    color="#fff"
-                    fill={wishlisted ? '#fff' : 'none'}
+                    color={wishlisted ? '#EF4444' : '#fff'}
+                    fill={wishlisted ? '#EF4444' : 'none'}
                   />
                 </TouchableOpacity>
               </View>
@@ -577,7 +634,7 @@ const DestinationDetailScreen = () => {
             ) : null}
             {/* Highlights */}
             {(destination.highlights ?? [])
-              .slice(0, showMoreHighlights ? undefined : 2)
+              .slice(0, showMoreHighlights ? undefined : 3)
               .map((h, i) => (
                 <View
                   key={i}
@@ -603,21 +660,23 @@ const DestinationDetailScreen = () => {
                   </Text>
                 </View>
               ))}
-            {/* Show More */}
-            <TouchableOpacity
-              onPress={() => setShowMoreHighlights(!showMoreHighlights)}
-            >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: '700',
-                  color: '#1E2A45',
-                  textDecorationLine: 'underline',
-                }}
+            {/* Show More — only if more than 3 highlights */}
+            {(destination.highlights ?? []).length > 3 && (
+              <TouchableOpacity
+                onPress={() => setShowMoreHighlights(!showMoreHighlights)}
               >
-                {showMoreHighlights ? 'Show Less' : 'Show More'}
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: '700',
+                    color: '#1E2A45',
+                    textDecorationLine: 'underline',
+                  }}
+                >
+                  {showMoreHighlights ? 'Show Less' : 'Show More'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Divider */}
@@ -854,13 +913,17 @@ const DestinationDetailScreen = () => {
                 </Text>
               </View>
             ) : (
-              <View style={{ flexDirection: 'row', gap: 12 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 12, paddingRight: 4 }}
+              >
                 {dates.map((d, i) => (
                   <TouchableOpacity
                     key={i}
                     onPress={() => !d.isFull && setSelectedDate(i)}
                     style={{
-                      flex: 1,
+                      width: 130,
                       borderWidth: 1.5,
                       borderColor: selectedDate === i ? '#1F8A70' : '#E5E7EB',
                       backgroundColor: d.isFull
@@ -951,7 +1014,7 @@ const DestinationDetailScreen = () => {
                     ) : null}
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
             )}
           </View>
 

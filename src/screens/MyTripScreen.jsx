@@ -14,16 +14,16 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
   Calendar,
   MapPin,
-  Users,
   Star,
   ChevronRight,
   Clock,
   CheckCircle,
   XCircle,
+  Users,
   AlertCircle,
 } from 'lucide-react-native';
 import { tripBookingsAPI, reviewsAPI, SERVER_URL } from '../services/api';
@@ -39,42 +39,47 @@ function fmt(d) {
   });
 }
 
-function fmtMoney(n) {
-  return `₹${Number(n || 0).toLocaleString('en-IN')}`;
+function fmtShort(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return `${dt.toLocaleDateString('en-IN', {
+    month: 'short',
+  })}\n${dt.getDate()}-`;
+}
+
+function fmtDateRange(start, end) {
+  if (!start || !end) return '—';
+  const s = new Date(start);
+  const e = new Date(end);
+  const sMonth = s.toLocaleDateString('en-IN', { month: 'short' });
+  const eMonth = e.toLocaleDateString('en-IN', { month: 'short' });
+  const year = e.getFullYear();
+  if (sMonth === eMonth) {
+    return `${s.getDate()} - ${e.getDate()}\n${sMonth} ${year}`;
+  }
+  return `${sMonth} ${s.getDate()} -\n${eMonth} ${e.getDate()}, ${year}`;
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr);
+  target.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+  return diff;
 }
 
 const resolveImage = url => {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
-  return `${SERVER_URL}${url}`;
-};
-
-// ── Status config ─────────────────────────────────────────────────────────────
-const STATUS_CONFIG = {
-  PENDING: {
-    label: 'Awaiting Confirmation',
-    color: '#F59E0B',
-    bg: '#FEF3C7',
-    icon: Clock,
-  },
-  CONFIRMED: {
-    label: 'Confirmed ✓',
-    color: '#10B981',
-    bg: '#D1FAE5',
-    icon: CheckCircle,
-  },
-  COMPLETED: {
-    label: 'Trip Completed',
-    color: '#6366F1',
-    bg: '#EDE9FE',
-    icon: CheckCircle,
-  },
-  CANCELLED: {
-    label: 'Cancelled',
-    color: '#EF4444',
-    bg: '#FEE2E2',
-    icon: XCircle,
-  },
+  if (url.startsWith('http')) {
+    if (url.includes('/uploads/')) {
+      const path = url.substring(url.indexOf('/uploads/'));
+      return `${SERVER_URL}${path}`;
+    }
+    return url;
+  }
+  return `${SERVER_URL}${url.startsWith('/') ? url : '/' + url}`;
 };
 
 // ── Star Rating Component ─────────────────────────────────────────────────────
@@ -138,13 +143,8 @@ const RateModal = ({ booking, onClose, onSubmitted }) => {
       <View style={styles.rateBackdrop}>
         <View style={styles.rateSheet}>
           <View style={styles.rateHandle} />
-
           <Text style={styles.rateTitle}>How was your trip?</Text>
           <Text style={styles.rateSub}>{pkg.packageTitle}</Text>
-          <Text style={styles.rateDates}>
-            {fmt(pkg.startDate)} – {fmt(pkg.endDate)}
-          </Text>
-
           <View style={{ alignItems: 'center', marginVertical: 20 }}>
             <StarRating rating={rating} onRate={setRating} size={40} />
             <Text style={styles.rateLabel}>
@@ -155,7 +155,6 @@ const RateModal = ({ booking, onClose, onSubmitted }) => {
                   ]}
             </Text>
           </View>
-
           <TextInput
             value={comment}
             onChangeText={setComment}
@@ -166,7 +165,6 @@ const RateModal = ({ booking, onClose, onSubmitted }) => {
             style={styles.rateInput}
             maxLength={500}
           />
-
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
             <TouchableOpacity
               onPress={onClose}
@@ -206,33 +204,63 @@ const RateModal = ({ booking, onClose, onSubmitted }) => {
   );
 };
 
-// ── Booking Card ──────────────────────────────────────────────────────────────
-const BookingCard = ({ booking, onRate }) => {
-  const cfg = STATUS_CONFIG[booking.status] || STATUS_CONFIG.PENDING;
-  const StatusIcon = cfg.icon;
+// ── Booking Card — matches design ─────────────────────────────────────────────
+const BookingCard = ({ booking, onRate, onViewDetails }) => {
   const snap = booking.snapshot || {};
   const pkg = booking.packageId || {};
   const imgUrl =
     resolveImage(snap.packageImageUrl || pkg.image_url) ||
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=200&fit=crop';
 
+  const startDate = snap.startDate || '';
+  const endDate = snap.endDate || '';
+  const days = daysUntil(startDate);
+  const location = snap.packageLocation || pkg.location || '—';
+
+  // Status
+  const statusLabel =
+    booking.status === 'CONFIRMED'
+      ? 'Confirmed'
+      : booking.status === 'COMPLETED'
+      ? 'Completed'
+      : booking.status === 'CANCELLED'
+      ? 'Cancelled'
+      : 'Pending';
+  const statusColor =
+    booking.status === 'CONFIRMED'
+      ? '#10B981'
+      : booking.status === 'COMPLETED'
+      ? '#6366F1'
+      : booking.status === 'CANCELLED'
+      ? '#EF4444'
+      : '#F59E0B';
+
   const showRateBtn = booking.status === 'COMPLETED' && !booking.hasReviewed;
 
   return (
     <View style={styles.card}>
-      {/* Image */}
-      <Image
-        source={{ uri: imgUrl }}
-        style={styles.cardImg}
-        resizeMode="cover"
-      />
-
-      {/* Status badge */}
-      <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
-        <StatusIcon size={12} color={cfg.color} strokeWidth={2.5} />
-        <Text style={[styles.statusText, { color: cfg.color }]}>
-          {cfg.label}
-        </Text>
+      {/* Cover Image */}
+      <View style={{ position: 'relative' }}>
+        <Image
+          source={{ uri: imgUrl }}
+          style={styles.cardImg}
+          resizeMode="cover"
+        />
+        {/* Trip countdown badge */}
+        {days !== null && days > 0 && booking.status === 'CONFIRMED' && (
+          <View style={styles.countdownBadge}>
+            <Text style={styles.countdownText}>
+              Trip start in {days} day{days !== 1 ? 's' : ''}
+            </Text>
+          </View>
+        )}
+        {booking.status === 'COMPLETED' && (
+          <View style={[styles.countdownBadge, { backgroundColor: '#EDE9FE' }]}>
+            <Text style={[styles.countdownText, { color: '#6366F1' }]}>
+              Trip Completed
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Content */}
@@ -240,43 +268,49 @@ const BookingCard = ({ booking, onRate }) => {
         <Text style={styles.cardTitle} numberOfLines={1}>
           {snap.packageTitle || pkg.title || 'Trip'}
         </Text>
+        <Text style={styles.cardLocation} numberOfLines={1}>
+          {location}
+        </Text>
+        <Text style={[styles.statusLabel, { color: statusColor }]}>
+          {statusLabel}
+        </Text>
 
-        <View style={styles.cardRow}>
-          <MapPin size={13} color="#94A3B8" />
-          <Text style={styles.cardMeta} numberOfLines={1}>
-            {snap.packageLocation || pkg.location || '—'}
-          </Text>
-        </View>
-
-        <View style={styles.cardRow}>
-          <Calendar size={13} color="#94A3B8" />
-          <Text style={styles.cardMeta}>
-            {fmt(snap.startDate)} – {fmt(snap.endDate)}
-          </Text>
-        </View>
-
-        <View style={styles.cardRow}>
-          <Users size={13} color="#94A3B8" />
-          <Text style={styles.cardMeta}>
-            {booking.seats} seat{booking.seats !== 1 ? 's' : ''}
-          </Text>
-        </View>
-
-        {/* Pricing */}
-        <View style={styles.priceRow}>
-          <Text style={styles.bookingId}>{booking.bookingId}</Text>
-          <Text style={styles.priceText}>
-            {fmtMoney(booking.pricing?.totalAmount)}
-          </Text>
-        </View>
-
-        {/* Cancellation reason */}
-        {booking.status === 'CANCELLED' && booking.cancelReason && (
-          <View style={styles.cancelNote}>
-            <AlertCircle size={12} color="#EF4444" />
-            <Text style={styles.cancelText}>{booking.cancelReason}</Text>
+        {/* Date + Location row */}
+        <View style={styles.infoRow}>
+          <View style={styles.infoCol}>
+            <Text style={styles.infoDate}>
+              {fmtDateRange(startDate, endDate)}
+            </Text>
           </View>
-        )}
+          <View style={styles.infoDivider} />
+          <View style={[styles.infoCol, { flex: 1.5 }]}>
+            <Text style={styles.infoLocation} numberOfLines={2}>
+              {location}
+            </Text>
+          </View>
+        </View>
+
+        {/* Booking ID + Trip Type */}
+        <View style={styles.infoRow}>
+          <View style={styles.infoCol}>
+            <Text style={styles.infoLabel}>Booking ID</Text>
+            <Text style={styles.infoValue}>{booking.bookingId || '—'}</Text>
+          </View>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoCol}>
+            <Text style={styles.infoLabel}>Trip Type</Text>
+            <Text style={styles.infoValue}>Package</Text>
+          </View>
+        </View>
+
+        {/* View Details */}
+        <TouchableOpacity
+          style={styles.viewDetailsBtn}
+          onPress={() => onViewDetails(booking)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.viewDetailsText}>View Details</Text>
+        </TouchableOpacity>
 
         {/* Rate trip button */}
         {showRateBtn && (
@@ -297,12 +331,12 @@ const BookingCard = ({ booking, onRate }) => {
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function MyTripScreen() {
+  const navigation = useNavigation();
   const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [ratingBooking, setRatingBooking] = useState(null);
-  const [activeFilter, setActiveFilter] = useState('all');
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -328,16 +362,6 @@ export default function MyTripScreen() {
     fetchBookings();
   };
 
-  const filters = ['all', 'PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'];
-  const filtered =
-    activeFilter === 'all'
-      ? bookings
-      : bookings.filter(b => b.status === activeFilter);
-
-  const pendingRatingCount = bookings.filter(
-    b => b.status === 'COMPLETED' && !b.hasReviewed,
-  ).length;
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -345,48 +369,13 @@ export default function MyTripScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Trips</Text>
-        {pendingRatingCount > 0 && (
-          <View style={styles.ratingBadge}>
-            <Star size={12} color="#F59E0B" fill="#F59E0B" />
-            <Text style={styles.ratingBadgeText}>
-              {pendingRatingCount} to rate
-            </Text>
-          </View>
-        )}
       </View>
-
-      {/* Filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
-        {filters.map(f => (
-          <TouchableOpacity
-            key={f}
-            onPress={() => setActiveFilter(f)}
-            style={[
-              styles.filterChip,
-              activeFilter === f && styles.filterChipActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                activeFilter === f && styles.filterChipTextActive,
-              ]}
-            >
-              {f === 'all' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#1F8A70" />
         </View>
-      ) : filtered.length === 0 ? (
+      ) : bookings.length === 0 ? (
         <ScrollView
           contentContainerStyle={styles.center}
           refreshControl={
@@ -398,11 +387,7 @@ export default function MyTripScreen() {
           }
         >
           <Calendar size={48} color="#CBD5E1" strokeWidth={1.5} />
-          <Text style={styles.emptyTitle}>
-            {activeFilter === 'all'
-              ? 'No trips yet'
-              : `No ${activeFilter.toLowerCase()} trips`}
-          </Text>
+          <Text style={styles.emptyTitle}>No trips yet</Text>
           <Text style={styles.emptySub}>
             Book a package to see your trips here
           </Text>
@@ -410,7 +395,7 @@ export default function MyTripScreen() {
       ) : (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, gap: 14 }}
+          contentContainerStyle={{ padding: 16, gap: 16 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -420,8 +405,15 @@ export default function MyTripScreen() {
             />
           }
         >
-          {filtered.map(b => (
-            <BookingCard key={b._id} booking={b} onRate={setRatingBooking} />
+          {bookings.map(b => (
+            <BookingCard
+              key={b._id}
+              booking={b}
+              onRate={setRatingBooking}
+              onViewDetails={booking =>
+                navigation.navigate('BookingDetails', { booking })
+              }
+            />
           ))}
           <View style={{ height: 20 }} />
         </ScrollView>
@@ -442,45 +434,13 @@ export default function MyTripScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#111827' },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  ratingBadgeText: { fontSize: 12, fontWeight: '600', color: '#92400E' },
-  filterRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
-  },
-  filterChipActive: {
-    backgroundColor: '#1F8A70',
-    borderColor: '#1F8A70',
-  },
-  filterChipText: { fontSize: 13, fontWeight: '500', color: '#64748B' },
-  filterChipTextActive: { color: '#fff', fontWeight: '600' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -500,52 +460,61 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#E5E7EB',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  cardImg: { width: '100%', height: 140 },
-  statusBadge: {
+  cardImg: { width: '100%', height: 150 },
+  countdownBadge: {
     position: 'absolute',
-    top: 10,
-    left: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
+    top: 12,
+    left: 12,
+    backgroundColor: '#E6F4EF',
+    paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 20,
   },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  cardBody: { padding: 14, gap: 6 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  cardMeta: { fontSize: 13, color: '#64748B', flex: 1 },
-  priceRow: {
+  countdownText: { fontSize: 12, fontWeight: '600', color: '#1F8A70' },
+  cardBody: { padding: 14 },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  cardLocation: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  statusLabel: { fontSize: 13, fontWeight: '600', marginTop: 4 },
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-    paddingTop: 8,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
-  bookingId: { fontSize: 11, color: '#94A3B8', fontFamily: 'monospace' },
-  priceText: { fontSize: 15, fontWeight: '700', color: '#1F8A70' },
-  cancelNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#FEF2F2',
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 4,
+  infoCol: { flex: 1 },
+  infoDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 12,
   },
-  cancelText: { fontSize: 12, color: '#EF4444', flex: 1 },
+  infoDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    lineHeight: 20,
+  },
+  infoLocation: { fontSize: 13, color: '#374151', lineHeight: 18 },
+  infoLabel: { fontSize: 11, color: '#9CA3AF', marginBottom: 2 },
+  infoValue: { fontSize: 13, fontWeight: '600', color: '#111827' },
+  viewDetailsBtn: {
+    alignItems: 'center',
+    marginTop: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  viewDetailsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    textDecorationLine: 'underline',
+  },
   ratePrompt: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -555,7 +524,7 @@ const styles = StyleSheet.create({
     borderColor: '#FDE68A',
     padding: 10,
     borderRadius: 10,
-    marginTop: 8,
+    marginTop: 10,
   },
   ratePromptText: {
     flex: 1,
@@ -595,12 +564,6 @@ const styles = StyleSheet.create({
     color: '#374151',
     textAlign: 'center',
     marginTop: 4,
-  },
-  rateDates: {
-    fontSize: 12,
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginTop: 2,
   },
   rateLabel: {
     fontSize: 13,

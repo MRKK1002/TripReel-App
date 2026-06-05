@@ -8,7 +8,6 @@ import {
   StatusBar,
   Modal,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,6 +30,7 @@ import {
   SERVER_URL,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import AppModal from '../components/AppModal';
 import './../../android/app/src/utils/globalFont.js';
 
 const resolveUrl = url => {
@@ -48,6 +48,12 @@ const BookingScreen = () => {
   // ── State ──────────────────────────────────────────────────────────────────
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
+  // Traveler details — { name, gender, age } for each person
+  const [travelers, setTravelers] = useState([
+    { name: user?.name || '', gender: '', age: '' },
+  ]);
+  // App modal (replaces Alert.alert)
+  const [modal, setModal] = useState({ visible: false });
   const [couponCode, setCouponCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
   const [couponApplied, setCouponApplied] = useState(false);
@@ -69,6 +75,27 @@ const BookingScreen = () => {
       })
       .catch(() => {});
   }, []);
+
+  // Sync travelers array when guest count changes
+  useEffect(() => {
+    const total = adults + children;
+    setTravelers(prev => {
+      if (prev.length === total) return prev;
+      if (prev.length < total) {
+        const extra = Array.from({ length: total - prev.length }, () => ({
+          name: '',
+          gender: '',
+          age: '',
+        }));
+        return [...prev, ...extra];
+      }
+      return prev.slice(0, total);
+    });
+  }, [adults, children]);
+
+  const showAppModal = cfg => setModal({ visible: true, ...cfg });
+  const closeAppModal = () => setModal(m => ({ ...m, visible: false }));
+  const CHILD_MAX_AGE = 7;
 
   // ── Pricing calculations ───────────────────────────────────────────────────
   const adultPrice = selectedBatch?.adultPrice || destination?.price || 0;
@@ -145,7 +172,12 @@ const BookingScreen = () => {
       return;
     }
     if (totalSeats > seatsLeft) {
-      Alert.alert('Not Enough Seats', `Only ${seatsLeft} seats available.`);
+      showAppModal({
+        variant: 'error',
+        title: 'Not Enough Seats',
+        message: 'Only ' + seatsLeft + ' seats available.',
+      });
+      return;
       return;
     }
 
@@ -155,24 +187,29 @@ const BookingScreen = () => {
         packageId: destination._id,
         batchId,
         seats: totalSeats,
-        travelerNames: [user?.name || ''],
+        travelers: travelers.map((t, i) => ({
+          name: t.name || '',
+          gender: t.gender || '',
+          age: Number(t.age) || 0,
+        })),
         couponCode: couponApplied ? couponCode : '',
       });
-      Alert.alert(
-        'Booking Confirmed! ✓',
-        'Your booking is pending operator confirmation. Check "My Trips" for updates.',
-        [
-          {
-            text: 'Go to My Trips',
-            onPress: () => navigation.navigate('Main', { screen: 'MyTrip' }),
-          },
-        ],
-      );
+      showAppModal({
+        variant: 'success',
+        title: 'Booking Confirmed! ✓',
+        message: 'Your booking is confirmed. Check "My Trips" for details.',
+        primaryLabel: 'Go to My Trips',
+        onPrimaryPress: () => {
+          closeAppModal();
+          navigation.navigate('Main', { screen: 'MyTrip' });
+        },
+      });
     } catch (err) {
-      Alert.alert(
-        'Booking Failed',
-        err?.response?.data?.message || 'Please try again.',
-      );
+      showAppModal({
+        variant: 'error',
+        title: 'Booking Failed',
+        message: err?.response?.data?.message || 'Please try again.',
+      });
     } finally {
       setBooking(false);
     }
@@ -389,6 +426,153 @@ const BookingScreen = () => {
             </View>
           </View>
         </TouchableOpacity>
+
+        {/* Traveler Details — name, gender, age for each person */}
+        <View
+          style={{
+            backgroundColor: '#fff',
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 12,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: '700',
+              color: '#111827',
+              marginBottom: 12,
+            }}
+          >
+            Traveler Details
+          </Text>
+          {travelers.map((t, i) => {
+            const isChild = i >= adults; // first N are adults, rest are children
+            const ageNum = Number(t.age) || 0;
+            const ageWarning = isChild && ageNum > CHILD_MAX_AGE;
+            return (
+              <View
+                key={i}
+                style={{
+                  marginBottom: 14,
+                  borderBottomWidth: i < travelers.length - 1 ? 1 : 0,
+                  borderBottomColor: '#F3F4F6',
+                  paddingBottom: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '600',
+                    color: ageWarning ? '#EF4444' : '#6B7280',
+                    marginBottom: 6,
+                  }}
+                >
+                  {isChild
+                    ? ageWarning
+                      ? `⚠️ Traveler ${i + 1} — Age ${ageNum} counts as Adult`
+                      : `Child ${i - adults + 1}`
+                    : `Adult ${i + 1}`}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput
+                    value={t.name}
+                    onChangeText={v =>
+                      setTravelers(prev => {
+                        const u = [...prev];
+                        u[i] = { ...u[i], name: v };
+                        return u;
+                      })
+                    }
+                    placeholder="Full Name *"
+                    placeholderTextColor="#9CA3AF"
+                    style={{
+                      flex: 2,
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      borderRadius: 8,
+                      paddingHorizontal: 10,
+                      paddingVertical: 8,
+                      fontSize: 13,
+                      color: '#111827',
+                      backgroundColor: '#F9FAFB',
+                    }}
+                  />
+                  <View
+                    style={{
+                      flex: 1,
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      borderRadius: 8,
+                      backgroundColor: '#F9FAFB',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <TouchableOpacity
+                      onPress={() => {
+                        const next =
+                          t.gender === 'Male'
+                            ? 'Female'
+                            : t.gender === 'Female'
+                            ? 'Other'
+                            : 'Male';
+                        setTravelers(prev => {
+                          const u = [...prev];
+                          u[i] = { ...u[i], gender: next };
+                          return u;
+                        });
+                      }}
+                      style={{ paddingHorizontal: 10, paddingVertical: 8 }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: t.gender ? '#111827' : '#9CA3AF',
+                        }}
+                      >
+                        {t.gender || 'Gender *'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    value={String(t.age || '')}
+                    onChangeText={v =>
+                      setTravelers(prev => {
+                        const u = [...prev];
+                        u[i] = { ...u[i], age: v.replace(/[^0-9]/g, '') };
+                        return u;
+                      })
+                    }
+                    placeholder="Age *"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    style={{
+                      width: 50,
+                      borderWidth: 1,
+                      borderColor: ageWarning ? '#EF4444' : '#E5E7EB',
+                      borderRadius: 8,
+                      paddingHorizontal: 10,
+                      paddingVertical: 8,
+                      fontSize: 13,
+                      color: '#111827',
+                      backgroundColor: ageWarning ? '#FEF2F2' : '#F9FAFB',
+                      textAlign: 'center',
+                    }}
+                  />
+                </View>
+                {ageWarning && (
+                  <Text
+                    style={{ fontSize: 11, color: '#EF4444', marginTop: 4 }}
+                  >
+                    Age {ageNum} is above {CHILD_MAX_AGE} — will be charged
+                    adult price
+                  </Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
 
         {/* Seats warning */}
         {seatsLeft <= 10 && seatsLeft > 0 && (
@@ -897,6 +1081,7 @@ const BookingScreen = () => {
           </View>
         </View>
       </Modal>
+      <AppModal {...modal} onClose={closeAppModal} />
     </SafeAreaView>
   );
 };

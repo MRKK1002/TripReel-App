@@ -131,7 +131,7 @@ const PackageCard = ({ item, onPress, onWishlist, inWishlist }) => {
         <Star size={12} color="#F59E0B" fill="#F59E0B" />
         <Text style={styles.cardMeta}>
           {' '}
-          {item.avgRating || item.rating || "New"}
+          {item.avgRating || item.rating || 'New'}
         </Text>
         {priceText ? <Text style={styles.cardMeta}> · </Text> : null}
         {priceText ? (
@@ -198,7 +198,7 @@ const RecentCard = ({ item, onPress }) => {
       >
         <Star size={11} color="#4CAF50" fill="#4CAF50" />
         <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>
-          {item.avgRating || item.rating || "New"}
+          {item.avgRating || item.rating || 'New'}
         </Text>
         <Text style={{ fontSize: 12, color: '#CBD5E1' }}>·</Text>
         <Text style={{ fontSize: 12, color: '#94A3B8' }}>
@@ -267,7 +267,7 @@ const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
         <Star size={12} color="#F59E0B" fill="#F59E0B" />
         <Text style={styles.cardMeta}>
           {' '}
-          {item.avgRating || item.rating || "New"}
+          {item.avgRating || item.rating || 'New'}
         </Text>
         {price ? (
           <>
@@ -410,7 +410,7 @@ const ReelCard = ({ item, onPress }) => {
 // ─── Main HomeScreen ──────────────────────────────────────────────────────────
 const HomeScreen = () => {
   const navigation = useNavigation();
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { recentlyViewed, addViewed } = useRecentlyViewed();
   // GPS location — used first; falls back to profile state if denied/unavailable
   const { country: gpsCountry, state: gpsState, getLocation } = useLocation();
@@ -432,6 +432,18 @@ const HomeScreen = () => {
     getLocation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-update profile state when GPS detects a different location
+  useEffect(() => {
+    if (!gpsState || !user) return;
+    // Only update if GPS state is different from profile state
+    if (gpsState !== user.state) {
+      updateProfile({ state: gpsState, country: gpsCountry || 'India' }).catch(
+        () => {},
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gpsState]);
 
   // ── Data fetching — GPS location takes priority over profile state ─────────
   const fetchData = useCallback(async () => {
@@ -489,8 +501,21 @@ const HomeScreen = () => {
       const expItems = expRes.data?.experiences || [];
       setNearYouItems(expItems.length > 0 ? expItems : allPkgs.slice(0, 8));
 
-      // ── Experience Reels — location-matched ───────────────────────────────
-      setReels(reelRes.data?.reels || []);
+      // ── Experience Reels — location-matched, fallback to all if empty ────
+      const reelItems = reelRes.data?.reels || [];
+      if (reelItems.length > 0) {
+        setReels(reelItems);
+      } else if (hasLocation) {
+        // No reels for this state — fetch all reels as fallback
+        try {
+          const fallbackRes = await reelsAPI.getAll({ limit: 20 });
+          setReels(fallbackRes.data?.reels || []);
+        } catch {
+          setReels([]);
+        }
+      } else {
+        setReels([]);
+      }
     } catch {
       // Silently fail — sections will just be empty
     } finally {

@@ -15,7 +15,11 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import {
+  useNavigation,
+  useFocusEffect,
+  CommonActions,
+} from '@react-navigation/native';
 import {
   Info,
   FileText,
@@ -38,6 +42,7 @@ import { useAuth } from '../context/AuthContext';
 import { SERVER_URL } from '../services/api';
 import AppModal from '../components/AppModal';
 import { StatePicker } from './RegisterScreen';
+import { COUNTRIES } from './RegisterScreen';
 import './../../android/app/src/utils/globalFont.js';
 
 const resolveAvatar = url => {
@@ -52,7 +57,9 @@ const EditProfileSheet = ({ visible, user, onClose, onSaved }) => {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [country, setCountry] = useState('India');
   const [state, setState] = useState('');
+  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [statePickerVisible, setStatePickerVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -65,6 +72,7 @@ const EditProfileSheet = ({ visible, user, onClose, onSaved }) => {
     if (visible) {
       setName(user?.name || '');
       setEmail(user?.email || '');
+      setCountry(user?.country || 'India');
       setState(user?.state || '');
     }
   }, [visible, user]);
@@ -112,7 +120,12 @@ const EditProfileSheet = ({ visible, user, onClose, onSaved }) => {
     }
     setSaving(true);
     try {
-      await updateProfile({ name: name.trim(), email: email.trim(), state });
+      await updateProfile({
+        name: name.trim(),
+        email: email.trim(),
+        state,
+        country,
+      });
       onSaved();
       onClose();
     } catch (err) {
@@ -230,10 +243,10 @@ const EditProfileSheet = ({ visible, user, onClose, onSaved }) => {
               <Lock size={14} color="#CBD5E1" />
             </View>
 
-            {/* State */}
-            <Text style={sheet.label}>Home State</Text>
+            {/* Country */}
+            <Text style={sheet.label}>Country</Text>
             <TouchableOpacity
-              onPress={() => setStatePickerVisible(true)}
+              onPress={() => setCountryPickerVisible(true)}
               style={[sheet.inputRow, { justifyContent: 'space-between' }]}
               activeOpacity={0.8}
             >
@@ -244,14 +257,45 @@ const EditProfileSheet = ({ visible, user, onClose, onSaved }) => {
                 <Text
                   style={[
                     sheet.input,
-                    { color: state ? '#111827' : '#9CA3AF' },
+                    { color: country ? '#111827' : '#9CA3AF' },
                   ]}
                 >
-                  {state || 'Select state'}
+                  {country || 'Select country'}
                 </Text>
               </View>
               <ChevronDown size={16} color="#9CA3AF" />
             </TouchableOpacity>
+
+            {/* State — only for India */}
+            {country === 'India' && (
+              <>
+                <Text style={sheet.label}>Home State</Text>
+                <TouchableOpacity
+                  onPress={() => setStatePickerVisible(true)}
+                  style={[sheet.inputRow, { justifyContent: 'space-between' }]}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <MapPin size={16} color="#9CA3AF" />
+                    <Text
+                      style={[
+                        sheet.input,
+                        { color: state ? '#111827' : '#9CA3AF' },
+                      ]}
+                    >
+                      {state || 'Select state'}
+                    </Text>
+                  </View>
+                  <ChevronDown size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+              </>
+            )}
 
             {/* Save */}
             <TouchableOpacity
@@ -279,6 +323,17 @@ const EditProfileSheet = ({ visible, user, onClose, onSaved }) => {
         onSelect={setState}
         onClose={() => setStatePickerVisible(false)}
       />
+      <StatePicker
+        visible={countryPickerVisible}
+        selected={country}
+        onSelect={val => {
+          setCountry(val);
+          if (val !== 'India') setState('');
+        }}
+        onClose={() => setCountryPickerVisible(false)}
+        items={COUNTRIES}
+        title="Select Your Country"
+      />
       <AppModal {...modal} onClose={closeModal} />
     </Modal>
   );
@@ -295,6 +350,7 @@ const AccountSettingsSheet = ({ visible, user, onClose }) => {
       icon: Phone,
     },
     { label: 'Home State', value: user?.state || '—', icon: MapPin },
+    { label: 'Country', value: user?.country || 'India', icon: MapPin },
     {
       label: 'Account Status',
       value: user?.status || 'Active',
@@ -389,9 +445,18 @@ const ProfileScreen = () => {
       message: 'You will need to sign in again to access your account.',
       primaryLabel: 'Log out',
       onPrimaryPress: () => {
+        // Close modal and navigate first (synchronous)
         closeModal();
+        // Clear session in background — storage clear is fire-and-forget here
+        // because navigation already moves away from authenticated screens
         logout();
-        navigation.replace('Login');
+        // Reset entire stack so back button can't return to home
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Welcome' }],
+          }),
+        );
       },
       secondaryLabel: 'Cancel',
       onSecondaryPress: closeModal,
@@ -464,7 +529,11 @@ const ProfileScreen = () => {
           <Text style={styles.name}>{user?.name || 'Your Name'}</Text>
           <Text style={styles.sub}>
             {user?.phone ? `+91 ${user.phone}` : user?.email || ''}
-            {user?.state ? `  •  ${user.state}` : ''}
+            {user?.state
+              ? `  •  ${user.state}`
+              : user?.country && user.country !== 'India'
+              ? `  •  ${user.country}`
+              : ''}
           </Text>
 
           <TouchableOpacity

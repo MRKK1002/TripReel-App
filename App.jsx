@@ -33,7 +33,7 @@ import {
   Users,
   User,
   Bookmark,
-  MessageCircle,
+  MessageCircleMore,
   Search,
   Home,
   ShoppingCart,
@@ -61,20 +61,16 @@ function TabIcon({ icon, label, focused }) {
     <View style={{ alignItems: 'center', justifyContent: 'center', width: 64 }}>
       <View
         style={{
-          backgroundColor: focused ? '#E6F4EF' : 'transparent',
-          width: 44,
-          height: 28,
-          borderRadius: 14,
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: 3,
+          marginBottom: 2,
         }}
       >
         {icon}
       </View>
       <Text
         style={{
-          color: focused ? '#111827' : '#9CA3AF',
+          color: focused ? '#1F8A70' : '#9CA3AF',
           fontSize: 11,
           fontWeight: focused ? '700' : '400',
         }}
@@ -162,17 +158,8 @@ function BottomTabs() {
               icon={
                 <Briefcase
                   size={20}
-                  color={focused ? '#ffffff' : '#9CA3AF'}
+                  color={focused ? '#1F8A70' : '#9CA3AF'}
                   strokeWidth={focused ? 2 : 1.5}
-                  style={
-                    focused
-                      ? {
-                          backgroundColor: '#1F8A70',
-                          borderRadius: 8,
-                          padding: 4,
-                        }
-                      : {}
-                  }
                 />
               }
             />
@@ -189,7 +176,7 @@ function BottomTabs() {
               focused={focused}
               label="Messages"
               icon={
-                <MessageCircle
+                <MessageCircleMore
                   size={20}
                   color={focused ? '#1F8A70' : '#9CA3AF'}
                   strokeWidth={focused ? 2 : 1.5}
@@ -266,7 +253,7 @@ export default function App() {
               component={ItineraryScreen}
               options={{ headerShown: false }}
             />
-           
+
             <Stack.Screen
               name="Profile"
               component={ProfileScreen}

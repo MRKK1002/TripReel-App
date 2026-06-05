@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://192.168.0.127:5001/api';
-export const SERVER_URL = 'http://192.168.0.127:5001';
+const BASE_URL = 'http://192.168.1.48:5001/api';
+export const SERVER_URL = 'http://192.168.1.48:5001';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -53,12 +53,13 @@ export const profileAPI = {
 
 // Package endpoints (public — only approved packages)
 export const packagesAPI = {
+  // All packages — pass userCountry + userState for nearby-first Curated sort
   getAll: (params = {}) => api.get('/packages', { params }),
   getByCategory: (category, limit = 5) =>
     api.get('/packages', { params: { category, limit } }),
-  // Popular = sorted by avgRating descending
+  // Popular = ranked by bookingCount + avgRating combined score
   getPopular: (limit = 10) =>
-    api.get('/packages', { params: { sortBy: 'rating_desc', limit } }),
+    api.get('/packages/popular', { params: { limit } }),
   getById: id => api.get(`/packages/${id}`),
 };
 
@@ -80,10 +81,10 @@ export const destinationsAPI = {
 // Experiences endpoints
 export const experiencesAPI = {
   getAll: (params = {}) => api.get('/experiences', { params }),
-  // Get experiences filtered by state/location keyword (for "Experiences Near You")
-  getByLocation: (locationKeyword, params = {}) =>
+  // Get experiences filtered by user's country + state (for "Experiences Near You")
+  getByLocation: ({ country = 'India', state = '' } = {}, params = {}) =>
     api.get('/experiences', {
-      params: { ...params, search: locationKeyword, limit: 10 },
+      params: { ...params, country, state, limit: 10 },
     }),
   getById: id => api.get(`/experiences/${id}`),
 };
@@ -91,6 +92,29 @@ export const experiencesAPI = {
 // Reel endpoints (public — only active reels)
 export const reelsAPI = {
   getAll: (params = {}) => api.get('/reels', { params }),
+  // Get reels filtered by user's country + state
+  getByLocation: ({ country = 'India', state = '' } = {}, params = {}) =>
+    api.get('/reels', { params: { ...params, country, state, limit: 20 } }),
+};
+
+// ── New booking system ────────────────────────────────────────────────────────
+
+// Batch endpoints — upcoming departures for a package
+export const batchesAPI = {
+  getForPackage: packageId => api.get('/batches', { params: { packageId } }),
+  getById: id => api.get(`/batches/${id}`),
+};
+
+// Trip Booking endpoints (user)
+export const tripBookingsAPI = {
+  create: data => api.post('/trip-bookings', data),
+  getMy: () => api.get('/trip-bookings/my'),
+  getById: id => api.get(`/trip-bookings/${id}`),
+};
+
+// Platform settings — public (gst_percent for display)
+export const settingsAPI = {
+  getPublic: () => api.get('/settings/public'),
 };
 
 export default api;

@@ -1,5 +1,3 @@
-
-
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
@@ -63,14 +61,37 @@ const MyTrip = () => {
   const [loading2, setLoading2] = useState(false);
 
   const destinations = [
-    { name: 'Bangkok', image: 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=400' },
-    { name: 'Phuket', image: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=400' },
-    { name: 'Phi Phi Islands', image: 'https://images.unsplash.com/photo-1589394815804-964ed0e2ce08?w=400' },
-    { name: 'Krabi', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400' },
-    { name: 'Chiang Mai', image: 'https://images.unsplash.com/photo-1588666309990-d68f08e3d4a6?w=400' },
-    { name: 'Koh Samui', image: 'https://images.unsplash.com/photo-1534008897995-27a23e859048?w=400' },
+    {
+      name: 'Bangkok',
+      image:
+        'https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=400',
+    },
+    {
+      name: 'Phuket',
+      image:
+        'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=400',
+    },
+    {
+      name: 'Phi Phi Islands',
+      image:
+        'https://images.unsplash.com/photo-1589394815804-964ed0e2ce08?w=400',
+    },
+    {
+      name: 'Krabi',
+      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400',
+    },
+    {
+      name: 'Chiang Mai',
+      image:
+        'https://images.unsplash.com/photo-1588666309990-d68f08e3d4a6?w=400',
+    },
+    {
+      name: 'Koh Samui',
+      image:
+        'https://images.unsplash.com/photo-1534008897995-27a23e859048?w=400',
+    },
   ];
-  
+
   const places = [
     { name: 'Beaches', icon: '🏖️' },
     { name: 'Temples', icon: '🛕' },
@@ -81,7 +102,7 @@ const MyTrip = () => {
     { name: 'Nightlife', icon: '🌃' },
     { name: 'Adventure Sports', icon: '🚵' },
   ];
-  
+
   const moods = [
     { value: 'adventure', label: 'Adventure', icon: '🧗', color: '#10B981' },
     { value: 'cultural', label: 'Cultural', icon: '🎎', color: '#F59E0B' },
@@ -89,14 +110,34 @@ const MyTrip = () => {
     { value: 'relaxation', label: 'Relaxation', icon: '🧘', color: '#3B82F6' },
     { value: 'family', label: 'Family Fun', icon: '👨‍👩‍👧‍👦', color: '#8B5CF6' },
   ];
-  
+
   const travelStyles = [
-    { value: 'luxury', label: 'Luxury', icon: '💎', description: 'Premium experiences with high-end accommodations' },
-    { value: 'budget', label: 'Budget', icon: '💰', description: 'Cost-effective options without compromising experiences' },
-    { value: 'backpacker', label: 'Backpacker', icon: '🎒', description: 'Adventurous and economical travel style' },
-    { value: 'mid-range', label: 'Mid-range', icon: '⚖️', description: 'Balance between comfort and cost' },
+    {
+      value: 'luxury',
+      label: 'Luxury',
+      icon: '💎',
+      description: 'Premium experiences with high-end accommodations',
+    },
+    {
+      value: 'budget',
+      label: 'Budget',
+      icon: '💰',
+      description: 'Cost-effective options without compromising experiences',
+    },
+    {
+      value: 'backpacker',
+      label: 'Backpacker',
+      icon: '🎒',
+      description: 'Adventurous and economical travel style',
+    },
+    {
+      value: 'mid-range',
+      label: 'Mid-range',
+      icon: '⚖️',
+      description: 'Balance between comfort and cost',
+    },
   ];
-  
+
   const accommodations = [
     { value: 'hotel', label: 'Hotels', icon: '🏨' },
     { value: 'resort', label: 'Resorts', icon: '🏝️' },
@@ -183,49 +224,55 @@ const MyTrip = () => {
   //   });
   // };
 
-// Get matching packages based on preferences (more flexible matching)
-const getMatchingPackages = () => {
-  // If we have AI recommendations but no exact package matches,
-  // return some relevant packages anyway
-  if (aiRecommendations && categories.length > 0) {
-    const relevantPackages = categories.filter(category => {
-      const pkg = category.packages[0];
-      
-      // Check if package destination matches or is similar to user preference
-      const destinationMatch = !userPreferences.destination || 
-        pkg.title.toLowerCase().includes(userPreferences.destination.toLowerCase()) ||
-        category.description.toLowerCase().includes(userPreferences.destination.toLowerCase());
-      
-      // Check if package mood matches
-      const moodMatch = !userPreferences.mood || 
-        category.mood === userPreferences.mood;
-      
-      // Check if package is within reasonable budget range
-      const budgetMatch = pkg.price <= userPreferences.budget * 1.5;
-      
-      return destinationMatch && moodMatch && budgetMatch;
-    });
-    
-    // If we found relevant packages, return them
-    if (relevantPackages.length > 0) {
-      return relevantPackages;
-    }
-    
-    // Otherwise return some popular packages as fallback
-    return categories.slice(0, 3);
-  }
-  
-  // Original matching logic
-  return categories.filter(category => {
-    const pkg = category.packages[0];
-    const withinBudget = pkg.price <= userPreferences.budget * 1.2;
-    const matchesPeople = Math.abs(pkg.people - userPreferences.people) <= 2;
-    const matchesMood = !userPreferences.mood || category.mood === userPreferences.mood;
+  // Get matching packages based on preferences (more flexible matching)
+  const getMatchingPackages = () => {
+    // If we have AI recommendations but no exact package matches,
+    // return some relevant packages anyway
+    if (aiRecommendations && categories.length > 0) {
+      const relevantPackages = categories.filter(category => {
+        const pkg = category.packages[0];
 
-    return withinBudget && matchesPeople && matchesMood;
-  });
-};
-  
+        // Check if package destination matches or is similar to user preference
+        const destinationMatch =
+          !userPreferences.destination ||
+          pkg.title
+            .toLowerCase()
+            .includes(userPreferences.destination.toLowerCase()) ||
+          category.description
+            .toLowerCase()
+            .includes(userPreferences.destination.toLowerCase());
+
+        // Check if package mood matches
+        const moodMatch =
+          !userPreferences.mood || category.mood === userPreferences.mood;
+
+        // Check if package is within reasonable budget range
+        const budgetMatch = pkg.price <= userPreferences.budget * 1.5;
+
+        return destinationMatch && moodMatch && budgetMatch;
+      });
+
+      // If we found relevant packages, return them
+      if (relevantPackages.length > 0) {
+        return relevantPackages;
+      }
+
+      // Otherwise return some popular packages as fallback
+      return categories.slice(0, 3);
+    }
+
+    // Original matching logic
+    return categories.filter(category => {
+      const pkg = category.packages[0];
+      const withinBudget = pkg.price <= userPreferences.budget * 1.2;
+      const matchesPeople = Math.abs(pkg.people - userPreferences.people) <= 2;
+      const matchesMood =
+        !userPreferences.mood || category.mood === userPreferences.mood;
+
+      return withinBudget && matchesPeople && matchesMood;
+    });
+  };
+
   // Reset quiz
   const resetQuiz = () => {
     setCurrentStep(0);
@@ -251,9 +298,9 @@ const getMatchingPackages = () => {
   // Fallback recommendations if API fails
   // const getFallbackRecommendations = (preferences) => {
   //   return {
-  //     summary: `Based on your preferences for ${preferences.destination || 'Thailand'}, 
-  //               we've curated these amazing experiences just for you. Your ${preferences.duration}-day trip 
-  //               for ${preferences.people} people with a ${preferences.mood} focus is perfect for exploring 
+  //     summary: `Based on your preferences for ${preferences.destination || 'Thailand'},
+  //               we've curated these amazing experiences just for you. Your ${preferences.duration}-day trip
+  //               for ${preferences.people} people with a ${preferences.mood} focus is perfect for exploring
   //               the best of what Thailand has to offer.`,
   //     personalizedTips: [
   //       `Visit ${preferences.destination || 'Bangkok'} during the early morning to avoid crowds`,
@@ -276,72 +323,88 @@ const getMatchingPackages = () => {
   // };
 
   // Fallback recommendations if API fails
-const getFallbackRecommendations = (preferences) => {
-  return {
-    summary: `Based on your preferences for ${preferences.destination || 'Thailand'}, 
-              we've curated these amazing experiences just for you. Your ${preferences.duration}-day trip 
-              for ${preferences.people} people with a ${preferences.mood} focus is perfect for exploring 
+  const getFallbackRecommendations = preferences => {
+    return {
+      summary: `Based on your preferences for ${
+        preferences.destination || 'Thailand'
+      }, 
+              we've curated these amazing experiences just for you. Your ${
+                preferences.duration
+              }-day trip 
+              for ${preferences.people} people with a ${
+        preferences.mood
+      } focus is perfect for exploring 
               the best of what Thailand has to offer.`,
-    personalizedTips: [
-      `Visit ${preferences.destination || 'Bangkok'} during the early morning to avoid crowds`,
-      `Try the local street food for an authentic experience`,
-      `Book temple visits in the cooler parts of the day`,
-    ],
-    hiddenGems: [
-      {
-        name: 'Secret Beach',
-        location: 'Near Phi Phi Islands',
-        description: 'A secluded beach only accessible by boat during low tide'
-      },
-      {
-        name: 'Local Market Experience',
-        location: 'Chiang Mai',
-        description: 'Authentic market where locals shop, not tourists'
-      }
-    ],
-    seasonalConsiderations: 'Thailand has a tropical climate with warm weather year-round. The cool season (November-February) is the most pleasant time to visit.'
+      personalizedTips: [
+        `Visit ${
+          preferences.destination || 'Bangkok'
+        } during the early morning to avoid crowds`,
+        `Try the local street food for an authentic experience`,
+        `Book temple visits in the cooler parts of the day`,
+      ],
+      hiddenGems: [
+        {
+          name: 'Secret Beach',
+          location: 'Near Phi Phi Islands',
+          description:
+            'A secluded beach only accessible by boat during low tide',
+        },
+        {
+          name: 'Local Market Experience',
+          location: 'Chiang Mai',
+          description: 'Authentic market where locals shop, not tourists',
+        },
+      ],
+      seasonalConsiderations:
+        'Thailand has a tropical climate with warm weather year-round. The cool season (November-February) is the most pleasant time to visit.',
+    };
   };
-};
 
   // Fallback itinerary if API fails
   const getFallbackItinerary = (pkg, preferences) => {
     return {
       title: `${preferences.duration}-Day ${preferences.destination} Adventure`,
-      summary: `Your personalized ${preferences.duration}-day journey through ${preferences.destination || 'Thailand'} 
-                designed for ${preferences.people} people with a focus on ${preferences.mood} experiences.`,
+      summary: `Your personalized ${preferences.duration}-day journey through ${
+        preferences.destination || 'Thailand'
+      } 
+                designed for ${preferences.people} people with a focus on ${
+        preferences.mood
+      } experiences.`,
       days: Array.from({ length: preferences.duration }, (_, i) => ({
         day: i + 1,
-        title: `Day ${i + 1}: Exploring ${preferences.destination || 'Thailand'}`,
+        title: `Day ${i + 1}: Exploring ${
+          preferences.destination || 'Thailand'
+        }`,
         activities: [
           {
             time: '09:00 AM',
             title: 'Morning Adventure',
-            description: 'Explore local attractions and cultural sites'
+            description: 'Explore local attractions and cultural sites',
           },
           {
             time: '01:00 PM',
             title: 'Lunch at Local Restaurant',
-            description: 'Authentic Thai cuisine experience'
+            description: 'Authentic Thai cuisine experience',
           },
           {
             time: '03:00 PM',
             title: 'Afternoon Exploration',
-            description: 'Visit famous landmarks and hidden gems'
+            description: 'Visit famous landmarks and hidden gems',
           },
           {
             time: '07:00 PM',
             title: 'Dinner & Evening Activities',
-            description: 'Enjoy local nightlife and culinary delights'
-          }
-        ]
+            description: 'Enjoy local nightlife and culinary delights',
+          },
+        ],
       })),
       essentials: [
         'Comfortable walking shoes',
         'Light clothing for warm weather',
         'Sun protection (hat, sunscreen)',
         'Local currency for markets',
-        'Camera to capture memories'
-      ]
+        'Camera to capture memories',
+      ],
     };
   };
 
@@ -399,72 +462,63 @@ const getFallbackRecommendations = (preferences) => {
   //   }
   // };
 
+  const handleNext = async () => {
+    if (currentStep < questions.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      setLoading(true);
+      try {
+        const recommendations = await getTravelRecommendations(userPreferences);
+        setAiRecommendations(recommendations);
+        setShowResults(true);
+      } catch {
+        const fallbackRecs = getFallbackRecommendations(userPreferences);
+        setAiRecommendations(fallbackRecs);
+        Alert.alert(
+          'Info',
+          'Using personalized recommendations (AI service temporarily unavailable)',
+          [{ text: 'OK' }],
+        );
+        setShowResults(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
-
-
-
-const handleNext = async () => {
-  if (currentStep < questions.length - 1) {
-    setCurrentStep(currentStep + 1);
-  } else {
-    setLoading(true);
+  const handleGenerateItinerary = async pkg => {
+    setLoading2(true);
     try {
-      const recommendations = await getTravelRecommendations(userPreferences);
-      console.log("recomm................." ,recommendations)
-      setAiRecommendations(recommendations);
-      setShowResults(true);
-    } catch (error) {
-      console.error('Error getting recommendations:', error);
-      const fallbackRecs = getFallbackRecommendations(userPreferences);
-      setAiRecommendations(fallbackRecs);
+      const itinerary = await getPersonalizedItinerary(pkg, userPreferences);
+      navigation.navigate('Itinerary', {
+        itinerary,
+        package: pkg,
+        userPreferences,
+      });
+    } catch {
+      const fallbackItinerary = getFallbackItinerary(pkg, userPreferences);
+      navigation.navigate('Itinerary', {
+        itinerary: fallbackItinerary,
+        package: pkg,
+        userPreferences,
+      });
       Alert.alert(
         'Info',
-        'Using personalized recommendations (AI service temporarily unavailable)',
+        'Generated itinerary with basic template (AI service temporarily unavailable)',
         [{ text: 'OK' }],
       );
-      setShowResults(true);
     } finally {
-      setLoading(false);
+      setLoading2(false);
     }
-  }
-};
+  };
 
-const handleGenerateItinerary = async pkg => {
-  setLoading2(true);
-  try {
-    const itinerary = await getPersonalizedItinerary(pkg, userPreferences);
-    navigation.navigate('Itinerary', {
-      itinerary,
-      package: pkg,
+  const handleViewAIRecommendations = () => {
+    navigation.navigate('AIRecommendations', {
+      recommendations:
+        aiRecommendations || getFallbackRecommendations(userPreferences),
       userPreferences,
     });
-  } catch (error) {
-    console.error('Error generating itinerary:', error);
-    const fallbackItinerary = getFallbackItinerary(pkg, userPreferences);
-    navigation.navigate('Itinerary', {
-      itinerary: fallbackItinerary,
-      package: pkg,
-      userPreferences,
-    });
-    Alert.alert(
-      'Info',
-      'Generated itinerary with basic template (AI service temporarily unavailable)',
-      [{ text: 'OK' }],
-    );
-  } finally {
-    setLoading2(false);
-  }
-};
-
-
-
-  
-const handleViewAIRecommendations = () => {
-  navigation.navigate('AIRecommendations', {
-    recommendations: aiRecommendations || getFallbackRecommendations(userPreferences),
-    userPreferences,
-  });
-};
+  };
 
   const handlePrev = () => {
     if (currentStep > 0) {
@@ -690,254 +744,288 @@ const handleViewAIRecommendations = () => {
   // }
 
   // Question Steps
-  
-  
+
   if (showResults) {
-  const matchingPackages = getMatchingPackages();
+    const matchingPackages = getMatchingPackages();
 
-  return (
-    <View className="flex-1 mt-16 mb-32 ">
-      {loading2 && (
-        <View className="absolute inset-0 z-10 flex items-center justify-center bg-white bg-opacity-50">
-          <View className="items-center">
-            <LottieView
-              source={require('./../assets/Travel.json')}
-              autoPlay
-              loop
-              style={{ width: 300, height: 300 }}
-            />
+    return (
+      <View className="flex-1 mt-16 mb-32 ">
+        {loading2 && (
+          <View className="absolute inset-0 z-10 flex items-center justify-center bg-white bg-opacity-50">
+            <View className="items-center">
+              <LottieView
+                source={require('./../assets/Travel.json')}
+                autoPlay
+                loop
+                style={{ width: 300, height: 300 }}
+              />
 
-            <Text className="mt-4 text-xl font-extrabold text-center text-gray-800">
-              Planning your perfect itinerary 🗺️✨
-            </Text>
+              <Text className="mt-4 text-xl font-extrabold text-center text-gray-800">
+                Planning your perfect itinerary 🗺️✨
+              </Text>
 
-            <Text className="px-6 mt-2 text-sm text-center text-gray-600">
-              Sit tight while we map your journey and find hidden gems 🌍
-            </Text>
+              <Text className="px-6 mt-2 text-sm text-center text-gray-600">
+                Sit tight while we map your journey and find hidden gems 🌍
+              </Text>
+            </View>
           </View>
-        </View>
-      )}
+        )}
 
-      <ScrollView className="flex-1 bg-white">
-        <View className="px-4 py-6">
-          {/* AI Recommendations Card - Always show this when we have AI data */}
-          {aiRecommendations && (
-            <View className="mb-6 overflow-hidden bg-white shadow-lg rounded-xl">
-              <View className="p-6 bg-gradient-to-r from-indigo-500 to-purple-600">
-                <Text className="text-2xl font-bold text-white">AI-Powered Recommendations</Text>
-                <Text className="mt-2 text-indigo-100">
-                  Personalized just for your trip to {userPreferences.destination}
-                </Text>
-              </View>
-              
-              <View className="p-6">
-                {/* Summary */}
-                <Text className="text-lg font-semibold text-gray-800">Trip Summary</Text>
-                <Text className="mt-2 text-gray-600">{aiRecommendations.summary}</Text>
-                
-                {/* Personalized Tips */}
-                <Text className="mt-6 text-lg font-semibold text-gray-800">Personalized Tips</Text>
-                {aiRecommendations.personalizedTips.map((tip, index) => (
-                  <View key={index} className="flex-row items-start mt-3">
-                    <View className="items-center justify-center w-6 h-6 mt-1 mr-3 bg-indigo-100 rounded-full">
-                      <Text className="text-sm font-bold text-indigo-600">{index + 1}</Text>
+        <ScrollView className="flex-1 bg-white">
+          <View className="px-4 py-6">
+            {/* AI Recommendations Card - Always show this when we have AI data */}
+            {aiRecommendations && (
+              <View className="mb-6 overflow-hidden bg-white shadow-lg rounded-xl">
+                <View className="p-6 bg-gradient-to-r from-indigo-500 to-purple-600">
+                  <Text className="text-2xl font-bold text-white">
+                    AI-Powered Recommendations
+                  </Text>
+                  <Text className="mt-2 text-indigo-100">
+                    Personalized just for your trip to{' '}
+                    {userPreferences.destination}
+                  </Text>
+                </View>
+
+                <View className="p-6">
+                  {/* Summary */}
+                  <Text className="text-lg font-semibold text-gray-800">
+                    Trip Summary
+                  </Text>
+                  <Text className="mt-2 text-gray-600">
+                    {aiRecommendations.summary}
+                  </Text>
+
+                  {/* Personalized Tips */}
+                  <Text className="mt-6 text-lg font-semibold text-gray-800">
+                    Personalized Tips
+                  </Text>
+                  {aiRecommendations.personalizedTips.map((tip, index) => (
+                    <View key={index} className="flex-row items-start mt-3">
+                      <View className="items-center justify-center w-6 h-6 mt-1 mr-3 bg-indigo-100 rounded-full">
+                        <Text className="text-sm font-bold text-indigo-600">
+                          {index + 1}
+                        </Text>
+                      </View>
+                      <Text className="flex-1 text-gray-600">{tip}</Text>
                     </View>
-                    <Text className="flex-1 text-gray-600">{tip}</Text>
-                  </View>
-                ))}
-                
-                {/* Hidden Gems */}
-                <Text className="mt-6 text-lg font-semibold text-gray-800">Hidden Gems</Text>
-                {aiRecommendations.hiddenGems.map((gem, index) => (
-                  <View key={index} className="p-4 mt-3 rounded-lg bg-indigo-50">
-                    <Text className="font-semibold text-indigo-700">{gem.name}</Text>
-                    <Text className="text-sm text-indigo-600">{gem.location}</Text>
-                    <Text className="mt-1 text-gray-600">{gem.description}</Text>
-                  </View>
-                ))}
-                
-                {/* Seasonal Considerations */}
-                <Text className="mt-6 text-lg font-semibold text-gray-800">Seasonal Tips</Text>
-                <Text className="mt-2 text-gray-600">{aiRecommendations.seasonalConsiderations}</Text>
-                
-                <TouchableOpacity
-                  onPress={handleViewAIRecommendations}
-                  className="flex-row items-center justify-center p-4 mt-6 bg-indigo-100 rounded-lg"
-                >
-                  <SparklesIcon size={24} color="#4F46E5" />
-                  <Text className="ml-3 font-semibold text-indigo-700">
-                    View Detailed Recommendations
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+                  ))}
 
-          <View className="items-center mb-8">
-            <Text className="mb-2 text-3xl font-bold text-center text-gray-800">
-              Perfect Matches for You!
-            </Text>
-            <Text className="mb-4 text-base text-center text-gray-600">
-              Based on your preferences, here are the best travel packages
-            </Text>
-            <TouchableOpacity
-              onPress={resetQuiz}
-              className="px-6 py-3 bg-indigo-600 rounded-lg"
-            >
-              <Text className="font-semibold text-white">Start Over</Text>
-            </TouchableOpacity>
-          </View>
-
-          {matchingPackages.length === 0 ? (
-            <View className="items-center py-12">
-              <View className="p-8 mx-4 bg-white rounded-lg shadow-lg">
-                <Text className="mb-4 text-xl font-semibold text-center text-gray-700">
-                  No exact package matches found
-                </Text>
-                <Text className="mb-4 text-center text-gray-600">
-                  But don't worry! Our AI recommendations above are tailored specifically for you.
-                </Text>
-                <Text className="mb-4 text-center text-gray-600">
-                  You can still plan an itinerary based on our AI suggestions.
-                </Text>
-                
-                {/* Fallback itinerary option */}
-                <TouchableOpacity
-                  onPress={() => handleGenerateItinerary({
-                    id: 'custom-ai-trip',
-                    title: `Custom ${userPreferences.destination} Trip`,
-                    description: 'Personalized trip based on AI recommendations',
-                    price: userPreferences.budget,
-                    people: userPreferences.people,
-                    includes: ['AI-curated experiences', 'Personalized recommendations'],
-                    touristPlaces: userPreferences.places,
-                    images: ['https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=400']
-                  })}
-                  className="px-6 py-3 bg-indigo-600 rounded-lg"
-                >
-                  <Text className="font-semibold text-center text-white">
-                    Create Custom Itinerary
+                  {/* Hidden Gems */}
+                  <Text className="mt-6 text-lg font-semibold text-gray-800">
+                    Hidden Gems
                   </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View>
-              {matchingPackages.map(category => {
-                const pkg = category.packages[0];
-                return (
-                  <View
-                    key={category.id}
-                    className="mb-6 overflow-hidden bg-white shadow-lg rounded-xl"
+                  {aiRecommendations.hiddenGems.map((gem, index) => (
+                    <View
+                      key={index}
+                      className="p-4 mt-3 rounded-lg bg-indigo-50"
+                    >
+                      <Text className="font-semibold text-indigo-700">
+                        {gem.name}
+                      </Text>
+                      <Text className="text-sm text-indigo-600">
+                        {gem.location}
+                      </Text>
+                      <Text className="mt-1 text-gray-600">
+                        {gem.description}
+                      </Text>
+                    </View>
+                  ))}
+
+                  {/* Seasonal Considerations */}
+                  <Text className="mt-6 text-lg font-semibold text-gray-800">
+                    Seasonal Tips
+                  </Text>
+                  <Text className="mt-2 text-gray-600">
+                    {aiRecommendations.seasonalConsiderations}
+                  </Text>
+
+                  <TouchableOpacity
+                    onPress={handleViewAIRecommendations}
+                    className="flex-row items-center justify-center p-4 mt-6 bg-indigo-100 rounded-lg"
                   >
-                    <View className="relative">
-                      <Image
-                        source={{ uri: pkg.images[0] }}
-                        className="w-full h-48"
-                        resizeMode="cover"
-                      />
-                      <View className="absolute px-3 py-1 bg-red-500 rounded-full top-4 right-4">
-                        <Text className="text-sm font-semibold text-white">
-                          {pkg.discount} OFF
-                        </Text>
-                      </View>
-                    </View>
+                    <SparklesIcon size={24} color="#4F46E5" />
+                    <Text className="ml-3 font-semibold text-indigo-700">
+                      View Detailed Recommendations
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
-                    <View className="p-4">
-                      <Text className="mb-2 text-xl font-bold text-gray-800">
-                        {pkg.title}
-                      </Text>
-                      <Text className="mb-4 text-sm text-gray-600">
-                        {category.description}
-                      </Text>
-
-                      <View className="flex-row items-center justify-between mb-4">
-                        <Text className="text-2xl font-bold text-indigo-600">
-                          ${pkg.price}
-                        </Text>
-                        <View className="flex-row items-center">
-                          <UsersIcon size={16} color="#6B7280" />
-                          <Text className="ml-1 text-sm text-gray-500">
-                            {pkg.people} people
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View className="mb-4">
-                        <Text className="mb-2 font-semibold text-gray-700">
-                          Includes:
-                        </Text>
-                        <View className="flex-row flex-wrap">
-                          {pkg.includes.slice(0, 4).map((item, idx) => (
-                            <View
-                              key={idx}
-                              className="flex-row items-center mb-1 mr-4"
-                            >
-                              <CheckCircleIcon size={12} color="#10B981" />
-                              <Text className="ml-1 text-sm text-green-600">
-                                {item}
-                              </Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-
-                      <View className="mb-4">
-                        <Text className="mb-2 font-semibold text-gray-700">
-                          Destinations:
-                        </Text>
-                        <View className="flex-row flex-wrap">
-                          {pkg.touristPlaces.slice(0, 3).map((place, idx) => (
-                            <View
-                              key={idx}
-                              className="px-2 py-1 mb-1 mr-2 bg-blue-100 rounded-full"
-                            >
-                              <Text className="text-xs text-blue-700">
-                                {place}
-                              </Text>
-                            </View>
-                          ))}
-                          {pkg.touristPlaces.length > 3 && (
-                            <View className="px-2 py-1 bg-gray-100 rounded-full">
-                              <Text className="text-xs text-gray-600">
-                                +{pkg.touristPlaces.length - 3} more
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-
-                      <View className="flex-row gap-3 mt-4">
-                        <TouchableOpacity
-                          className="flex-1 py-3 bg-indigo-600 rounded-lg"
-                          onPress={() => handleBookNow(pkg)}
-                        >
-                          <Text className="font-semibold text-center text-white">
-                            Book Now
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          className="flex-1 py-3 border border-indigo-600 rounded-lg"
-                          onPress={() => handleGenerateItinerary(pkg)}
-                        >
-                          <Text className="font-semibold text-center text-indigo-600">
-                            Plan Itinerary
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
+            <View className="items-center mb-8">
+              <Text className="mb-2 text-3xl font-bold text-center text-gray-800">
+                Perfect Matches for You!
+              </Text>
+              <Text className="mb-4 text-base text-center text-gray-600">
+                Based on your preferences, here are the best travel packages
+              </Text>
+              <TouchableOpacity
+                onPress={resetQuiz}
+                className="px-6 py-3 bg-indigo-600 rounded-lg"
+              >
+                <Text className="font-semibold text-white">Start Over</Text>
+              </TouchableOpacity>
             </View>
-          )}
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-  
+
+            {matchingPackages.length === 0 ? (
+              <View className="items-center py-12">
+                <View className="p-8 mx-4 bg-white rounded-lg shadow-lg">
+                  <Text className="mb-4 text-xl font-semibold text-center text-gray-700">
+                    No exact package matches found
+                  </Text>
+                  <Text className="mb-4 text-center text-gray-600">
+                    But don't worry! Our AI recommendations above are tailored
+                    specifically for you.
+                  </Text>
+                  <Text className="mb-4 text-center text-gray-600">
+                    You can still plan an itinerary based on our AI suggestions.
+                  </Text>
+
+                  {/* Fallback itinerary option */}
+                  <TouchableOpacity
+                    onPress={() =>
+                      handleGenerateItinerary({
+                        id: 'custom-ai-trip',
+                        title: `Custom ${userPreferences.destination} Trip`,
+                        description:
+                          'Personalized trip based on AI recommendations',
+                        price: userPreferences.budget,
+                        people: userPreferences.people,
+                        includes: [
+                          'AI-curated experiences',
+                          'Personalized recommendations',
+                        ],
+                        touristPlaces: userPreferences.places,
+                        images: [
+                          'https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=400',
+                        ],
+                      })
+                    }
+                    className="px-6 py-3 bg-indigo-600 rounded-lg"
+                  >
+                    <Text className="font-semibold text-center text-white">
+                      Create Custom Itinerary
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View>
+                {matchingPackages.map(category => {
+                  const pkg = category.packages[0];
+                  return (
+                    <View
+                      key={category.id}
+                      className="mb-6 overflow-hidden bg-white shadow-lg rounded-xl"
+                    >
+                      <View className="relative">
+                        <Image
+                          source={{ uri: pkg.images[0] }}
+                          className="w-full h-48"
+                          resizeMode="cover"
+                        />
+                        <View className="absolute px-3 py-1 bg-red-500 rounded-full top-4 right-4">
+                          <Text className="text-sm font-semibold text-white">
+                            {pkg.discount} OFF
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View className="p-4">
+                        <Text className="mb-2 text-xl font-bold text-gray-800">
+                          {pkg.title}
+                        </Text>
+                        <Text className="mb-4 text-sm text-gray-600">
+                          {category.description}
+                        </Text>
+
+                        <View className="flex-row items-center justify-between mb-4">
+                          <Text className="text-2xl font-bold text-indigo-600">
+                            ${pkg.price}
+                          </Text>
+                          <View className="flex-row items-center">
+                            <UsersIcon size={16} color="#6B7280" />
+                            <Text className="ml-1 text-sm text-gray-500">
+                              {pkg.people} people
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View className="mb-4">
+                          <Text className="mb-2 font-semibold text-gray-700">
+                            Includes:
+                          </Text>
+                          <View className="flex-row flex-wrap">
+                            {pkg.includes.slice(0, 4).map((item, idx) => (
+                              <View
+                                key={idx}
+                                className="flex-row items-center mb-1 mr-4"
+                              >
+                                <CheckCircleIcon size={12} color="#10B981" />
+                                <Text className="ml-1 text-sm text-green-600">
+                                  {item}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+
+                        <View className="mb-4">
+                          <Text className="mb-2 font-semibold text-gray-700">
+                            Destinations:
+                          </Text>
+                          <View className="flex-row flex-wrap">
+                            {pkg.touristPlaces.slice(0, 3).map((place, idx) => (
+                              <View
+                                key={idx}
+                                className="px-2 py-1 mb-1 mr-2 bg-blue-100 rounded-full"
+                              >
+                                <Text className="text-xs text-blue-700">
+                                  {place}
+                                </Text>
+                              </View>
+                            ))}
+                            {pkg.touristPlaces.length > 3 && (
+                              <View className="px-2 py-1 bg-gray-100 rounded-full">
+                                <Text className="text-xs text-gray-600">
+                                  +{pkg.touristPlaces.length - 3} more
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+
+                        <View className="flex-row gap-3 mt-4">
+                          <TouchableOpacity
+                            className="flex-1 py-3 bg-indigo-600 rounded-lg"
+                            onPress={() => handleBookNow(pkg)}
+                          >
+                            <Text className="font-semibold text-center text-white">
+                              Book Now
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            className="flex-1 py-3 border border-indigo-600 rounded-lg"
+                            onPress={() => handleGenerateItinerary(pkg)}
+                          >
+                            <Text className="font-semibold text-center text-indigo-600">
+                              Plan Itinerary
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   const renderStep = () => {
     const HashtagIcon = questions[currentStep].icon;
 
@@ -1008,36 +1096,51 @@ const handleViewAIRecommendations = () => {
               <Text className="text-3xl font-bold text-indigo-600">
                 {userPreferences.duration} days
               </Text>
-              
+
               <View className="w-full">
                 <View className="flex-row justify-between mb-2">
                   <Text className="text-gray-500">3 days</Text>
                   <Text className="text-gray-500">21 days</Text>
                 </View>
-                
+
                 <View className="relative">
                   <View className="h-2 bg-gray-200 rounded-full"></View>
-                  <View 
+                  <View
                     className="absolute h-2 bg-indigo-600 rounded-full"
-                    style={{ width: `${(userPreferences.duration - 3) / 18 * 100}%` }}
+                    style={{
+                      width: `${((userPreferences.duration - 3) / 18) * 100}%`,
+                    }}
                   ></View>
                   <View
                     className="absolute w-6 h-6 bg-indigo-600 rounded-full -top-2"
-                    style={{ left: `${(userPreferences.duration - 3) / 18 * 100}%`, marginLeft: -12 }}
+                    style={{
+                      left: `${((userPreferences.duration - 3) / 18) * 100}%`,
+                      marginLeft: -12,
+                    }}
                   ></View>
                 </View>
               </View>
-              
+
               <View className="flex-row gap-4">
                 <TouchableOpacity
-                  onPress={() => updatePreference('duration', Math.max(3, userPreferences.duration - 1))}
+                  onPress={() =>
+                    updatePreference(
+                      'duration',
+                      Math.max(3, userPreferences.duration - 1),
+                    )
+                  }
                   className="items-center justify-center w-12 h-12 bg-indigo-100 rounded-full"
                 >
                   <MinusIcon size={20} color="#4F46E5" />
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
-                  onPress={() => updatePreference('duration', Math.min(21, userPreferences.duration + 1))}
+                  onPress={() =>
+                    updatePreference(
+                      'duration',
+                      Math.min(21, userPreferences.duration + 1),
+                    )
+                  }
                   className="items-center justify-center w-12 h-12 bg-indigo-100 rounded-full"
                 >
                   <PlusIcon size={20} color="#4F46E5" />
@@ -1081,18 +1184,22 @@ const handleViewAIRecommendations = () => {
                 <PlusIcon size={20} color="#4F46E5" />
               </TouchableOpacity>
             </View>
-            
+
             <View className="mt-8">
-              <Text className="mb-3 font-medium text-gray-700">Traveling with:</Text>
+              <Text className="mb-3 font-medium text-gray-700">
+                Traveling with:
+              </Text>
               <View className="flex-row flex-wrap justify-center gap-2">
-                {['Solo', 'Couple', 'Family', 'Friends', 'Business'].map(type => (
-                  <TouchableOpacity
-                    key={type}
-                    className="px-4 py-2 bg-gray-100 rounded-full"
-                  >
-                    <Text className="text-gray-700">{type}</Text>
-                  </TouchableOpacity>
-                ))}
+                {['Solo', 'Couple', 'Family', 'Friends', 'Business'].map(
+                  type => (
+                    <TouchableOpacity
+                      key={type}
+                      className="px-4 py-2 bg-gray-100 rounded-full"
+                    >
+                      <Text className="text-gray-700">{type}</Text>
+                    </TouchableOpacity>
+                  ),
+                )}
               </View>
             </View>
           </View>
@@ -1145,16 +1252,23 @@ const handleViewAIRecommendations = () => {
 
                 <View className="relative">
                   <View className="h-2 bg-gray-200 rounded-full"></View>
-                  <View 
+                  <View
                     className="absolute h-2 bg-indigo-600 rounded-full"
-                    style={{ width: `${(userPreferences.budget - 200) / 1800 * 100}%` }}
+                    style={{
+                      width: `${
+                        ((userPreferences.budget - 200) / 1800) * 100
+                      }%`,
+                    }}
                   ></View>
                   <View
                     className="absolute w-6 h-6 bg-indigo-600 rounded-full -top-2"
-                    style={{ left: `${(userPreferences.budget - 200) / 1800 * 100}%`, marginLeft: -12 }}
+                    style={{
+                      left: `${((userPreferences.budget - 200) / 1800) * 100}%`,
+                      marginLeft: -12,
+                    }}
                   ></View>
                 </View>
-                
+
                 <View className="flex-row flex-wrap justify-center gap-2">
                   {[200, 500, 800, 1200, 2000].map(budget => (
                     <TouchableOpacity
@@ -1166,11 +1280,13 @@ const handleViewAIRecommendations = () => {
                           : 'bg-gray-200'
                       }`}
                     >
-                      <Text className={
-                        userPreferences.budget === budget
-                          ? 'text-white font-medium'
-                          : 'text-gray-700'
-                      }>
+                      <Text
+                        className={
+                          userPreferences.budget === budget
+                            ? 'text-white font-medium'
+                            : 'text-gray-700'
+                        }
+                      >
                         ${budget}
                       </Text>
                     </TouchableOpacity>
@@ -1197,11 +1313,13 @@ const handleViewAIRecommendations = () => {
                 >
                   <Text className="mr-3 text-2xl">{style.icon}</Text>
                   <View className="flex-1">
-                    <Text className={`font-medium ${
-                      userPreferences.travelStyle === style.value
-                        ? 'text-indigo-700'
-                        : 'text-gray-700'
-                    }`}>
+                    <Text
+                      className={`font-medium ${
+                        userPreferences.travelStyle === style.value
+                          ? 'text-indigo-700'
+                          : 'text-gray-700'
+                      }`}
+                    >
                       {style.label}
                     </Text>
                     <Text className="text-xs text-gray-500">
@@ -1257,7 +1375,11 @@ const handleViewAIRecommendations = () => {
                       ? 'border-indigo-500 bg-indigo-50'
                       : 'border-gray-200 bg-gray-50'
                   }`}
-                  style={userPreferences.mood === mood.value ? { borderColor: mood.color } : {}}
+                  style={
+                    userPreferences.mood === mood.value
+                      ? { borderColor: mood.color }
+                      : {}
+                  }
                 >
                   <Text className="mr-3 text-2xl">{mood.icon}</Text>
                   <Text
@@ -1308,11 +1430,11 @@ const handleViewAIRecommendations = () => {
             ) : (
               <View className="w-8" />
             )}
-            
+
             <Text className="text-lg font-semibold text-gray-500">
               {currentStep + 1}/{questions.length}
             </Text>
-            
+
             <View className="w-8" />
           </View>
 

@@ -10,11 +10,21 @@ import {
   StatusBar,
   Share,
   StyleSheet,
+  Alert,
+  Modal,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { reviewsAPI, SERVER_URL } from '../services/api';
+import {
+  reviewsAPI,
+  batchesAPI,
+  tripBookingsAPI,
+  settingsAPI,
+  SERVER_URL,
+} from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import AppModal from './AppModal';
 
@@ -98,6 +108,15 @@ const PackageDetailScreen = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
   const [expandedDays, setExpandedDays] = useState({});
+  const [selectedBatchId, setSelectedBatchId] = useState(null);
+  // Batches fetched from API — separate Batch collection
+  const [batches, setBatches] = useState([]);
+  const [batchesLoading, setBatchesLoading] = useState(false);
+  // Booking sheet state
+  const [bookingSheetVisible, setBookingSheetVisible] = useState(false);
+  const [bookingSeats, setBookingSeats] = useState('1');
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [gstPercent, setGstPercent] = useState(5);
 
   // ── Guard: no package passed ──────────────────────────────────────────────
   if (!route.params?.package) {
@@ -125,6 +144,23 @@ const PackageDetailScreen = () => {
   const itinerary = Array.isArray(pkg.itinerary) ? pkg.itinerary : [];
   const addons = Array.isArray(pkg.addons) ? pkg.addons : [];
 
+  // Fetch real batches from /api/batches?packageId=X on mount
+  useEffect(() => {
+    if (!pkg._id) return;
+    setBatchesLoading(true);
+    Promise.all([batchesAPI.getForPackage(pkg._id), settingsAPI.getPublic()])
+      .then(([batchRes, settingsRes]) => {
+        setBatches(batchRes.data?.batches || []);
+        setGstPercent(settingsRes.data?.gst_percent ?? 5);
+      })
+      .catch(() => setBatches([]))
+      .finally(() => setBatchesLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pkg._id]);
+
+  const selectedBatch =
+    batches.find(b => String(b._id) === String(selectedBatchId)) || null;
+
   // Build image list — prefer images[], fall back to image_url
   const imageList =
     Array.isArray(pkg.images) && pkg.images.length > 0
@@ -147,8 +183,8 @@ const PackageDetailScreen = () => {
       await Share.share({
         message: `Check out this amazing ${title} package for just ₹${price}!`,
       });
-    } catch (e) {
-      console.log(e.message);
+    } catch {
+      // share failed silently
     }
   };
 
@@ -254,6 +290,176 @@ const PackageDetailScreen = () => {
   // ── Tab: Overview ─────────────────────────────────────────────────────────
   const renderOverview = () => (
     <View style={{ paddingBottom: 24 }}>
+      {/* ── Batch / Departure Selector ─────────────────────────────────── */}
+      {batchesLoading ? (
+        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+          <Text style={styles.sectionTitle}>Select Departure Date</Text>
+          <ActivityIndicator color="#1F8A70" style={{ marginTop: 8 }} />
+        </View>
+      ) : batches.length > 0 ? (
+        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+          <Text style={styles.sectionTitle}>Select Departure Date</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 10, paddingRight: 4 }}
+          >
+            {batches.map(b => {
+              const total = b.totalSeats || 0;
+              const booked = b.bookedSeats || 0;
+              const remaining = total - booked;
+              const isFull = total > 0 && remaining <= 0;
+              const isSelected = String(b._id) === String(selectedBatchId);
+
+              const start = new Date(b.startDate);
+              const end = new Date(b.endDate);
+              const fmt = d =>
+                d.toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                });
+              const nights =
+                Math.round(
+                  (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+                ) || 1;
+
+              return (
+                <TouchableOpacity
+                  key={String(b._id)}
+                  onPress={() => !isFull && setSelectedBatchId(String(b._id))}
+                  activeOpacity={isFull ? 1 : 0.85}
+                  style={[
+                    styles.batchCard,
+                    isSelected && styles.batchCardSelected,
+                    isFull && styles.batchCardFull,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.batchDate,
+                      isSelected && { color: '#fff' },
+                      isFull && { color: '#9CA3AF' },
+                    ]}
+                  >
+                    {fmt(start)} → {fmt(end)}
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.batchNights,
+                      isSelected && { color: 'rgba(255,255,255,0.8)' },
+                      isFull && { color: '#CBD5E1' },
+                    ]}
+                  >
+                    {nights} night{nights !== 1 ? 's' : ''}
+                    {b.label ? ` · ${b.label}` : ''}
+                  </Text>
+
+                  {/* Per-batch price */}
+                  <Text
+                    style={[
+                      styles.batchPrice,
+                      isSelected && { color: '#fff' },
+                      isFull && { color: '#9CA3AF' },
+                    ]}
+                  >
+                    ₹{Number(b.adultPrice || 0).toLocaleString('en-IN')}
+                    /person
+                  </Text>
+
+                  {total > 0 && (
+                    <View style={styles.batchSeats}>
+                      <View
+                        style={[
+                          styles.batchSeatsDot,
+                          {
+                            backgroundColor: isFull
+                              ? '#EF4444'
+                              : remaining <= 3
+                              ? '#F97316'
+                              : '#10B981',
+                          },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.batchSeatsText,
+                          isSelected && { color: 'rgba(255,255,255,0.9)' },
+                          isFull && { color: '#9CA3AF' },
+                        ]}
+                      >
+                        {isFull
+                          ? 'FULL'
+                          : remaining <= 3
+                          ? `Only ${remaining} left`
+                          : `${remaining} seats`}
+                      </Text>
+                    </View>
+                  )}
+
+                  {b.bookingDeadline && !isFull && (
+                    <Text
+                      style={[
+                        styles.batchDeadline,
+                        isSelected && { color: 'rgba(255,255,255,0.7)' },
+                      ]}
+                    >
+                      Book by{' '}
+                      {new Date(b.bookingDeadline).toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                      })}
+                    </Text>
+                  )}
+
+                  {isSelected && (
+                    <View style={styles.batchCheck}>
+                      <Text
+                        style={{
+                          color: '#1F8A70',
+                          fontSize: 12,
+                          fontWeight: '800',
+                        }}
+                      >
+                        ✓
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          {!selectedBatchId && (
+            <Text
+              style={{
+                color: '#F97316',
+                fontSize: 12,
+                marginTop: 8,
+                fontWeight: '500',
+              }}
+            >
+              Please select a departure date to book
+            </Text>
+          )}
+        </View>
+      ) : (
+        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+          <View
+            style={{
+              backgroundColor: '#FEF3C7',
+              borderRadius: 12,
+              padding: 12,
+            }}
+          >
+            <Text style={{ fontSize: 13, color: '#92400E', fontWeight: '600' }}>
+              No upcoming departures at the moment
+            </Text>
+            <Text style={{ fontSize: 12, color: '#B45309', marginTop: 2 }}>
+              Check back later or contact the operator
+            </Text>
+          </View>
+        </View>
+      )}
       {/* Quick Facts */}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Quick Facts</Text>
@@ -669,28 +875,257 @@ const PackageDetailScreen = () => {
 
       {/* Fixed Book Now Button */}
       <View style={styles.bookBar}>
-        <View>
-          <Text style={{ fontSize: 12, color: '#6b7280' }}>Total price</Text>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: '#1f2937' }}>
-            ₹{price.toLocaleString('en-IN')}
+        <View style={{ flex: 1, marginRight: 16 }}>
+          <Text style={{ fontSize: 12, color: '#6b7280' }}>
+            {selectedBatch
+              ? new Date(selectedBatch.startDate).toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : batches.length > 0
+              ? 'Select a date'
+              : 'From'}
           </Text>
+          <Text style={{ fontSize: 20, fontWeight: '800', color: '#1f2937' }}>
+            ₹
+            {(selectedBatch ? selectedBatch.adultPrice : price).toLocaleString(
+              'en-IN',
+            )}
+          </Text>
+          {selectedBatch &&
+            selectedBatch.totalSeats - selectedBatch.bookedSeats > 0 && (
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: '#10B981',
+                  fontWeight: '600',
+                  marginTop: 1,
+                }}
+              >
+                {selectedBatch.totalSeats - selectedBatch.bookedSeats} seats
+                left
+              </Text>
+            )}
         </View>
         <TouchableOpacity
-          style={styles.bookBtn}
-          onPress={() =>
-            Alert.alert(
-              'Book Package',
-              `You're about to book "${title}" for ₹${price.toLocaleString(
-                'en-IN',
-              )}`,
-              [{ text: 'OK' }],
-            )
-          }
+          style={[
+            styles.bookBtn,
+            batches.length > 0 && !selectedBatch && styles.bookBtnDisabled,
+          ]}
+          onPress={() => {
+            if (batches.length > 0 && !selectedBatch) {
+              Alert.alert(
+                'Select a Date',
+                'Please select a departure batch before booking.',
+                [{ text: 'OK' }],
+              );
+              setActiveTab('overview');
+              return;
+            }
+            if (!selectedBatch) {
+              Alert.alert(
+                'No batches',
+                'No upcoming departures for this package.',
+                [{ text: 'OK' }],
+              );
+              return;
+            }
+            setBookingSeats('1');
+            setBookingSheetVisible(true);
+          }}
         >
           <WalletIcon size={20} />
           <Text style={styles.bookBtnText}>Book Now</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Booking bottom sheet */}
+      <Modal
+        visible={bookingSheetVisible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setBookingSheetVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{
+            flex: 1,
+            justifyContent: 'flex-end',
+            backgroundColor: 'rgba(15,23,42,0.5)',
+          }}
+        >
+          <View style={styles.bookSheet}>
+            <View style={styles.bookSheetHandle} />
+
+            <Text style={styles.bookSheetTitle}>{title}</Text>
+            {selectedBatch && (
+              <Text style={styles.bookSheetSub}>
+                {new Date(selectedBatch.startDate).toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+                {' → '}
+                {new Date(selectedBatch.endDate).toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+                {selectedBatch.label ? ` · ${selectedBatch.label}` : ''}
+              </Text>
+            )}
+
+            {/* Seats selector */}
+            <View style={styles.seatsRow}>
+              <Text style={styles.seatsLabel}>Number of seats</Text>
+              <View style={styles.seatsControl}>
+                <TouchableOpacity
+                  onPress={() =>
+                    setBookingSeats(s => String(Math.max(1, Number(s) - 1)))
+                  }
+                  style={styles.seatsBtn}
+                >
+                  <Text style={styles.seatsBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.seatsValue}>{bookingSeats}</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    const max = selectedBatch
+                      ? selectedBatch.totalSeats - selectedBatch.bookedSeats
+                      : 99;
+                    setBookingSeats(s => String(Math.min(max, Number(s) + 1)));
+                  }}
+                  style={styles.seatsBtn}
+                >
+                  <Text style={styles.seatsBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Pricing breakdown */}
+            {selectedBatch &&
+              (() => {
+                const seats = Number(bookingSeats) || 1;
+                const subtotal = selectedBatch.adultPrice * seats;
+                const gstAmt = Math.round((subtotal * gstPercent) / 100);
+                const total = subtotal + gstAmt;
+                return (
+                  <View style={styles.pricingBox}>
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>
+                        ₹{selectedBatch.adultPrice.toLocaleString('en-IN')} ×{' '}
+                        {seats} seat{seats !== 1 ? 's' : ''}
+                      </Text>
+                      <Text style={styles.pricingVal}>
+                        ₹{subtotal.toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>
+                        GST ({gstPercent}%)
+                      </Text>
+                      <Text style={styles.pricingVal}>
+                        ₹{gstAmt.toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.pricingRow,
+                        {
+                          borderTopWidth: 1,
+                          borderTopColor: '#E2E8F0',
+                          marginTop: 6,
+                          paddingTop: 8,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pricingLabel,
+                          { fontWeight: '700', color: '#111827' },
+                        ]}
+                      >
+                        Total
+                      </Text>
+                      <Text
+                        style={[
+                          styles.pricingVal,
+                          { fontWeight: '800', color: '#1F8A70', fontSize: 16 },
+                        ]}
+                      >
+                        ₹{total.toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })()}
+
+            <Text style={{ fontSize: 11, color: '#94A3B8', marginBottom: 16 }}>
+              Booking is PENDING until confirmed by the operator. No payment
+              collected now.
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setBookingSheetVisible(false)}
+                style={[styles.bookSheetBtn, { backgroundColor: '#F1F5F9' }]}
+              >
+                <Text
+                  style={{ color: '#475569', fontWeight: '600', fontSize: 15 }}
+                >
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!selectedBatch) return;
+                  setBookingLoading(true);
+                  try {
+                    await tripBookingsAPI.create({
+                      packageId: pkg._id,
+                      batchId: selectedBatch._id,
+                      seats: Number(bookingSeats) || 1,
+                    });
+                    setBookingSheetVisible(false);
+                    Alert.alert(
+                      'Booking Submitted! ✓',
+                      'Your booking is pending confirmation. Check "My Trips" for updates.',
+                      [{ text: 'OK' }],
+                    );
+                  } catch (err) {
+                    Alert.alert(
+                      'Booking Failed',
+                      err?.response?.data?.message || 'Please try again.',
+                    );
+                  } finally {
+                    setBookingLoading(false);
+                  }
+                }}
+                disabled={bookingLoading}
+                style={[
+                  styles.bookSheetBtn,
+                  {
+                    backgroundColor: '#1F8A70',
+                    opacity: bookingLoading ? 0.7 : 1,
+                  },
+                ]}
+              >
+                {bookingLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text
+                    style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}
+                  >
+                    Confirm Booking
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -927,10 +1362,155 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
+  bookBtnDisabled: {
+    backgroundColor: '#94A3B8',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    elevation: 2,
+  },
   bookBtnText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '700',
+  },
+  // Booking bottom sheet
+  bookSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 28,
+  },
+  bookSheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2E8F0',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  bookSheetTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  bookSheetSub: { fontSize: 13, color: '#64748B', marginBottom: 20 },
+  seatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  seatsLabel: { fontSize: 15, fontWeight: '600', color: '#374151' },
+  seatsControl: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  seatsBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  seatsBtnText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#374151',
+    lineHeight: 24,
+  },
+  seatsValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+    minWidth: 24,
+    textAlign: 'center',
+  },
+  pricingBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 14,
+  },
+  pricingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  pricingLabel: { fontSize: 13, color: '#64748B' },
+  pricingVal: { fontSize: 13, color: '#374151', fontWeight: '600' },
+  bookSheetBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Batch selector cards
+  batchCard: {
+    minWidth: 140,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    position: 'relative',
+  },
+  batchCardSelected: {
+    backgroundColor: '#1F8A70',
+    borderColor: '#1F8A70',
+  },
+  batchCardFull: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    opacity: 0.6,
+  },
+  batchDate: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 3,
+  },
+  batchNights: {
+    fontSize: 11,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  batchPrice: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1F8A70',
+    marginBottom: 6,
+  },
+  batchSeats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  batchSeatsDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  batchSeatsText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  batchDeadline: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  batchCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

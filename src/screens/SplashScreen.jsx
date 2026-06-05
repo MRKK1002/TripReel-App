@@ -20,13 +20,15 @@ const SplashScreen = ({ navigation }) => {
     // Don't navigate until the session restore is done
     if (loading) return;
 
-    timerRef.current = setTimeout(() => {
-      if (isAuthenticated) {
-        navigation.replace('Main');
-      } else {
+    // If authenticated, go straight to Main — no delay needed
+    // If not authenticated, short splash then Welcome
+    if (isAuthenticated) {
+      navigation.replace('Main');
+    } else {
+      timerRef.current = setTimeout(() => {
         navigation.replace('Welcome');
-      }
-    }, 800); // short splash delay
+      }, 800);
+    }
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);

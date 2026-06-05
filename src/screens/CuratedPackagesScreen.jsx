@@ -54,9 +54,8 @@ const CuratedPackagesScreen = () => {
       // Always fetch ALL approved packages — show everything
       const res = await packagesAPI.getAll({ limit: 200 });
       setPackages(res.data?.packages || []);
-    } catch (err) {
+    } catch {
       setError('Failed to load packages. Pull down to retry.');
-      console.warn('CuratedPackages fetch error:', err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);

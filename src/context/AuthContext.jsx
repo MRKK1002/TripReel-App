@@ -4,32 +4,47 @@ import { authAPI, profileAPI, setAuthToken } from '../services/api';
 
 const STORAGE_TOKEN_KEY = '@tripreel_token';
 const STORAGE_USER_KEY = '@tripreel_user';
+const STORAGE_LOGOUT_KEY = '@tripreel_logged_out';
 
 const AuthContext = createContext(null);
+
+// Helper — remove multiple keys without multiRemove
+const removeKeys = (...keys) =>
+  Promise.all(keys.map(k => AsyncStorage.removeItem(k)));
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  // loading = true while we're restoring session from storage
   const [loading, setLoading] = useState(true);
 
   // ── Restore session on cold start ─────────────────────────────────────────
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const [storedToken, storedUser] = await Promise.all([
+        const [storedToken, storedUser, loggedOut] = await Promise.all([
           AsyncStorage.getItem(STORAGE_TOKEN_KEY),
           AsyncStorage.getItem(STORAGE_USER_KEY),
+          AsyncStorage.getItem(STORAGE_LOGOUT_KEY),
         ]);
 
-        if (storedToken) {
+        // Logout flag was written — treat as logged out regardless of token
+        if (loggedOut === 'true') {
+          await removeKeys(
+            STORAGE_TOKEN_KEY,
+            STORAGE_USER_KEY,
+            STORAGE_LOGOUT_KEY,
+          );
+        } else if (storedToken) {
           setAuthToken(storedToken);
           setToken(storedToken);
           setUser(storedUser ? JSON.parse(storedUser) : null);
         }
       } catch {
-        // corrupted storage — start fresh
-        await AsyncStorage.multiRemove([STORAGE_TOKEN_KEY, STORAGE_USER_KEY]);
+        await removeKeys(
+          STORAGE_TOKEN_KEY,
+          STORAGE_USER_KEY,
+          STORAGE_LOGOUT_KEY,
+        );
       } finally {
         setLoading(false);
       }
@@ -49,14 +64,21 @@ export const AuthProvider = ({ children }) => {
     ]);
   };
 
-  const clearSession = async () => {
+  // Called from synchronous onPress — writes logout flag first (survives app kill),
+  // clears remaining keys in background, wipes in-memory state immediately.
+  const clearSessionSync = () => {
+    // Logout flag is the "source of truth" on next cold start
+    AsyncStorage.setItem(STORAGE_LOGOUT_KEY, 'true').catch(() => {});
+    // Remove token + user in background
+    AsyncStorage.removeItem(STORAGE_TOKEN_KEY).catch(() => {});
+    AsyncStorage.removeItem(STORAGE_USER_KEY).catch(() => {});
+    // Wipe memory immediately — isAuthenticated becomes false right now
     setAuthToken(null);
     setToken(null);
     setUser(null);
-    await AsyncStorage.multiRemove([STORAGE_TOKEN_KEY, STORAGE_USER_KEY]);
   };
 
-  // ── Legacy email/password (kept for admin web panel compat) ───────────────
+  // ── Auth ──────────────────────────────────────────────────────────────────
   const login = async (email, password) => {
     const response = await authAPI.login({ email, password });
     const { token: t, user: u } = response.data;
@@ -72,8 +94,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ── OTP-based auth ────────────────────────────────────────────────────────
-  const sendSignupOtp = async (name, email, phone, state) => {
-    const response = await authAPI.signupSendOtp({ name, email, phone, state });
+  const sendSignupOtp = async (name, email, phone, state, country) => {
+    const response = await authAPI.signupSendOtp({
+      name,
+      email,
+      phone,
+      state,
+      country: country || 'India',
+    });
     return response.data;
   };
 
@@ -85,18 +113,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const sendLoginOtp = async phone => {
-    try {
-      const response = await authAPI.loginSendOtp({ phone });
-      return response.data;
-    } catch (err) {
-      console.log('[LOGIN OTP] code:', err?.code);
-      console.log('[LOGIN OTP] status:', err?.response?.status);
-      console.log('[LOGIN OTP] data:', JSON.stringify(err?.response?.data));
-      console.log('[LOGIN OTP] message:', err?.message);
-      console.log('[LOGIN OTP] url:', err?.config?.url);
-      console.log('[LOGIN OTP] baseURL:', err?.config?.baseURL);
-      throw err;
-    }
+    const response = await authAPI.loginSendOtp({ phone });
+    return response.data;
   };
 
   const verifyLoginOtp = async (phone, code) => {
@@ -106,9 +124,9 @@ export const AuthProvider = ({ children }) => {
     return response.data;
   };
 
-  // ── Logout ────────────────────────────────────────────────────────────────
-  const logout = async () => {
-    await clearSession();
+  // ── Logout — synchronous so it works safely inside onPress ───────────────
+  const logout = () => {
+    clearSessionSync();
   };
 
   // ── Profile helpers ───────────────────────────────────────────────────────
@@ -125,7 +143,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateProfile = async data => {
-    // data can include: name, email, phone, state
     const res = await profileAPI.update(data);
     const updated = res.data.user;
     setUser(updated);

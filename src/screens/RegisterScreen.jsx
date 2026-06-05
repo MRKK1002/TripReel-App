@@ -73,10 +73,63 @@ export const INDIA_STATES = [
   'Puducherry',
 ];
 
-// ─── Reusable State Picker (exported for ProfileScreen) ───────────────────────
-export const StatePicker = ({ visible, selected, onSelect, onClose }) => {
+// ─── Countries ─────────────────────────────────────────────────────────────────
+export const COUNTRIES = [
+  'India',
+  'UAE',
+  'Thailand',
+  'Maldives',
+  'Sri Lanka',
+  'Nepal',
+  'Bhutan',
+  'Singapore',
+  'Malaysia',
+  'Indonesia (Bali)',
+  'Vietnam',
+  'Cambodia',
+  'Japan',
+  'South Korea',
+  'Turkey',
+  'Egypt',
+  'Kenya',
+  'South Africa',
+  'France',
+  'Italy',
+  'Switzerland',
+  'United Kingdom',
+  'USA',
+  'Australia',
+  'New Zealand',
+  'Canada',
+  'Greece',
+  'Spain',
+  'Portugal',
+  'Russia',
+  'China',
+  'Hong Kong',
+  'Mauritius',
+  'Seychelles',
+  'Jordan',
+  'Saudi Arabia',
+  'Oman',
+  'Qatar',
+  'Bahrain',
+  'Kuwait',
+];
+
+// ─── Reusable List Picker (exported for ProfileScreen) ────────────────────────
+export const StatePicker = ({
+  visible,
+  selected,
+  onSelect,
+  onClose,
+  items,
+  title,
+}) => {
+  const listItems = items || INDIA_STATES;
+  const pickerTitle = title || 'Select Your State';
   const [search, setSearch] = useState('');
-  const filtered = INDIA_STATES.filter(s =>
+  const filtered = listItems.filter(s =>
     s.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -125,7 +178,7 @@ export const StatePicker = ({ visible, selected, onSelect, onClose }) => {
               marginBottom: 12,
             }}
           >
-            Select Your State
+            {pickerTitle}
           </Text>
           <View
             style={{
@@ -202,11 +255,13 @@ const RegisterScreen = () => {
 
   // ── Details fields ──────────────────────────────────────────────────────────
   const [avatarLocalUri, setAvatarLocalUri] = useState(null);
-  const [avatarAsset, setAvatarAsset] = useState(null); // raw asset for upload later
+  const [avatarAsset, setAvatarAsset] = useState(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState('India');
   const [state, setState] = useState('');
+  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [statePickerVisible, setStatePickerVisible] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
 
@@ -293,7 +348,7 @@ const RegisterScreen = () => {
 
     setSendingOtp(true);
     try {
-      const res = await sendSignupOtp(n, e, p, state);
+      const res = await sendSignupOtp(n, e, p, state, country);
       setStep('otp');
       startResendTimer();
       if (res?.otp) showOtpDelivered(res.otp);
@@ -372,6 +427,7 @@ const RegisterScreen = () => {
         email.trim().toLowerCase(),
         phone.trim(),
         state,
+        country,
       );
       startResendTimer();
       if (res?.otp) showOtpDelivered(res.otp);
@@ -547,12 +603,12 @@ const RegisterScreen = () => {
                 />
               </View>
 
-              <Text style={labelStyle}>Home State</Text>
+              <Text style={labelStyle}>Country</Text>
               <TouchableOpacity
-                onPress={() => setStatePickerVisible(true)}
+                onPress={() => setCountryPickerVisible(true)}
                 style={{
                   ...inputContainer,
-                  marginBottom: 28,
+                  marginBottom: 16,
                   justifyContent: 'space-between',
                 }}
                 activeOpacity={0.8}
@@ -568,14 +624,50 @@ const RegisterScreen = () => {
                   <Text
                     style={{
                       fontSize: 14,
-                      color: state ? '#111827' : '#9CA3AF',
+                      color: country ? '#111827' : '#9CA3AF',
                     }}
                   >
-                    {state || 'Select your state'}
+                    {country || 'Select your country'}
                   </Text>
                 </View>
                 <ChevronDown size={18} color="#9CA3AF" />
               </TouchableOpacity>
+
+              {/* Show state picker only for India */}
+              {country === 'India' && (
+                <>
+                  <Text style={labelStyle}>Home State</Text>
+                  <TouchableOpacity
+                    onPress={() => setStatePickerVisible(true)}
+                    style={{
+                      ...inputContainer,
+                      marginBottom: 28,
+                      justifyContent: 'space-between',
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 10,
+                      }}
+                    >
+                      <MapPin size={18} color="#9CA3AF" />
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: state ? '#111827' : '#9CA3AF',
+                        }}
+                      >
+                        {state || 'Select your state'}
+                      </Text>
+                    </View>
+                    <ChevronDown size={18} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </>
+              )}
+              {country !== 'India' && <View style={{ marginBottom: 28 }} />}
 
               <TouchableOpacity
                 onPress={handleSendOtp}
@@ -761,6 +853,20 @@ const RegisterScreen = () => {
         selected={state}
         onSelect={setState}
         onClose={() => setStatePickerVisible(false)}
+      />
+
+      {/* Country picker */}
+      <StatePicker
+        visible={countryPickerVisible}
+        selected={country}
+        onSelect={val => {
+          setCountry(val);
+          // Reset state when switching away from India
+          if (val !== 'India') setState('');
+        }}
+        onClose={() => setCountryPickerVisible(false)}
+        items={COUNTRIES}
+        title="Select Your Country"
       />
 
       <AppModal {...modal} onClose={closeModal} />

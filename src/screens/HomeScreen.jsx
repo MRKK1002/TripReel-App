@@ -22,7 +22,6 @@ import {
   Star,
   Heart,
   X,
-  Play,
   MapPin,
   Eye,
 } from 'lucide-react-native';
@@ -34,10 +33,12 @@ import {
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useRecentlyViewed, timeAgo } from '../hooks/useRecentlyViewed';
+import { useLocation } from '../hooks/useLocation';
 import './../../android/app/src/utils/globalFont.js';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const REEL_COL_WIDTH = (SCREEN_WIDTH - 48) / 2; // 2-column grid with padding
+// 2-col reel grid: 16px padding each side + 12px gap between columns
+const REEL_COL_WIDTH = (SCREEN_WIDTH - 32 - 12) / 2;
 
 // Resolve relative /uploads/... paths to absolute URLs
 const resolveImage = url => {
@@ -56,25 +57,19 @@ const SectionHeader = ({ title, onSeeAll }) => (
         hitSlop={12}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
       >
-        <Text style={{ fontSize: 13, color: '#1F8A70', fontWeight: '600' }}>
+        <Text style={{ fontSize: 14, color: '#1F8A70', fontWeight: '600' }}>
           See all
         </Text>
-        <ChevronRight size={14} color="#1F8A70" />
+        <ChevronRight size={15} color="#1F8A70" strokeWidth={2.5} />
       </TouchableOpacity>
     )}
   </View>
 );
 
-// ─── Package card (used for Popular Destinations, Curated, Experiences Near You) ─
-const PackageCard = ({
-  item,
-  onPress,
-  onWishlist,
-  inWishlist,
-  wide = false,
-}) => {
-  const width = wide ? 220 : 176;
-  const height = wide ? 160 : 176;
+// ─── Package card (Curated Packages, Experiences Near You, Popular) ──────────
+const PackageCard = ({ item, onPress, onWishlist, inWishlist }) => {
+  const CARD_WIDTH = 165;
+  const CARD_HEIGHT = 155;
   const imageUri =
     resolveImage(item.image_url || item.image) ||
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop';
@@ -84,14 +79,14 @@ const PackageCard = ({
 
   return (
     <TouchableOpacity
-      style={{ width, marginRight: 14 }}
+      style={{ width: CARD_WIDTH, marginRight: 12 }}
       activeOpacity={0.9}
       onPress={onPress}
     >
       <View style={{ position: 'relative' }}>
         <Image
           source={{ uri: imageUri }}
-          style={{ width, height, borderRadius: 14 }}
+          style={{ width: CARD_WIDTH, height: CARD_HEIGHT, borderRadius: 14 }}
           resizeMode="cover"
         />
         {item.badge ? (
@@ -105,8 +100,8 @@ const PackageCard = ({
           hitSlop={8}
         >
           <Heart
-            size={17}
-            color={inWishlist ? '#EF4444' : '#fff'}
+            size={16}
+            color={inWishlist ? '#EF4444' : '#9CA3AF'}
             fill={inWishlist ? '#EF4444' : 'none'}
           />
         </TouchableOpacity>
@@ -119,7 +114,7 @@ const PackageCard = ({
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            marginTop: 2,
+            marginTop: 3,
             gap: 3,
           }}
         >
@@ -130,15 +125,16 @@ const PackageCard = ({
         </View>
       ) : null}
       <View
-        style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
+        style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}
       >
         <Star size={12} color="#F59E0B" fill="#F59E0B" />
         <Text style={styles.cardMeta}>
+          {' '}
           {item.avgRating || item.rating || 4.5}
-          {item.reviewCount ? ` (${item.reviewCount})` : ''}
         </Text>
+        {priceText ? <Text style={styles.cardMeta}> · </Text> : null}
         {priceText ? (
-          <Text style={styles.cardPrice}> · {priceText}</Text>
+          <Text style={styles.cardPrice}>From {priceText}</Text>
         ) : null}
       </View>
     </TouchableOpacity>
@@ -152,35 +148,40 @@ const RecentCard = ({ item, onPress }) => {
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop';
   return (
     <TouchableOpacity
-      style={{ width: 90, marginRight: 12 }}
+      style={{ width: 100, marginRight: 14 }}
       activeOpacity={0.9}
       onPress={onPress}
     >
       <View style={{ position: 'relative' }}>
         <Image
           source={{ uri: imageUri }}
-          style={{ width: 90, height: 90, borderRadius: 10 }}
+          style={{ width: 100, height: 100, borderRadius: 14 }}
           resizeMode="cover"
         />
-        <View
+        {/* White square heart button — matches design */}
+        <TouchableOpacity
           style={{
             position: 'absolute',
-            top: 5,
-            right: 5,
-            backgroundColor: 'rgba(255,255,255,0.85)',
-            borderRadius: 10,
-            padding: 3,
+            top: 7,
+            right: 7,
+            width: 26,
+            height: 26,
+            borderRadius: 7,
+            backgroundColor: 'rgba(255,255,255,0.92)',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
+          hitSlop={6}
         >
-          <Heart size={13} color="#9CA3AF" fill="none" />
-        </View>
+          <Heart size={14} color="#9CA3AF" fill="none" />
+        </TouchableOpacity>
       </View>
       <Text
         style={{
-          marginTop: 5,
-          fontWeight: '600',
+          marginTop: 6,
+          fontWeight: '700',
           color: '#0F172A',
-          fontSize: 12,
+          fontSize: 13,
         }}
         numberOfLines={1}
       >
@@ -190,16 +191,16 @@ const RecentCard = ({ item, onPress }) => {
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          marginTop: 2,
-          gap: 3,
+          marginTop: 3,
+          gap: 4,
         }}
       >
-        <Star size={10} color="#4CAF50" fill="#4CAF50" />
-        <Text style={{ fontSize: 11, color: '#64748B' }}>
+        <Star size={11} color="#4CAF50" fill="#4CAF50" />
+        <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>
           {item.rating || 4.5}
         </Text>
-        <Text style={{ fontSize: 11, color: '#CBD5E1' }}>·</Text>
-        <Text style={{ fontSize: 11, color: '#94A3B8' }}>
+        <Text style={{ fontSize: 12, color: '#CBD5E1' }}>·</Text>
+        <Text style={{ fontSize: 12, color: '#94A3B8' }}>
           {timeAgo(item.viewedAt)}
         </Text>
       </View>
@@ -207,36 +208,38 @@ const RecentCard = ({ item, onPress }) => {
   );
 };
 
-// ─── Popular Destination card (wider, rating-sorted) ─────────────────────────
+// ─── Popular Destination card ─────────────────────────────────────────────────
 const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
   const imageUri =
     resolveImage(item.image_url || item.image) ||
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop';
-  const price = item.price || 0;
+  const price = item.pricing?.adultPrice || item.price || 0;
 
   return (
     <TouchableOpacity
-      style={{ width: 200, marginRight: 14 }}
+      style={{ width: 165, marginRight: 12 }}
       activeOpacity={0.9}
       onPress={onPress}
     >
       <View style={{ position: 'relative' }}>
         <Image
           source={{ uri: imageUri }}
-          style={{ width: 200, height: 150, borderRadius: 14 }}
+          style={{ width: 165, height: 155, borderRadius: 14 }}
           resizeMode="cover"
         />
+        {/* Teal badge — solid teal bg, white text */}
         <View style={styles.badge}>
           <Text style={styles.badgeText}>Popular</Text>
         </View>
+        {/* White circle heart — matches design */}
         <TouchableOpacity
           style={styles.heartBtn}
           onPress={onWishlist}
           hitSlop={8}
         >
           <Heart
-            size={17}
-            color={inWishlist ? '#EF4444' : '#fff'}
+            size={16}
+            color={inWishlist ? '#EF4444' : '#9CA3AF'}
             fill={inWishlist ? '#EF4444' : 'none'}
           />
         </TouchableOpacity>
@@ -248,7 +251,7 @@ const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          marginTop: 2,
+          marginTop: 3,
           gap: 3,
         }}
       >
@@ -258,18 +261,20 @@ const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
         </Text>
       </View>
       <View
-        style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
+        style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}
       >
         <Star size={12} color="#F59E0B" fill="#F59E0B" />
         <Text style={styles.cardMeta}>
+          {' '}
           {item.avgRating || item.rating || 4.5}
-          {item.reviewCount ? ` (${item.reviewCount})` : ''}
         </Text>
         {price ? (
-          <Text style={styles.cardPrice}>
-            {' '}
-            · From ₹{Number(price).toLocaleString('en-IN')}
-          </Text>
+          <>
+            <Text style={styles.cardMeta}> · </Text>
+            <Text style={styles.cardPrice}>
+              From ₹{Number(price).toLocaleString('en-IN')}
+            </Text>
+          </>
         ) : null}
       </View>
     </TouchableOpacity>
@@ -277,8 +282,13 @@ const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
 };
 
 // ─── Reel card (2-column grid) ────────────────────────────────────────────────
+// Matches Figma: tall portrait cards, view count top-right, uploader chip bottom-left
+// No center play button — clean poster feel matching the design
 const ReelCard = ({ item, onPress }) => {
   const thumb = item.thumbnail ? resolveImage(item.thumbnail) : null;
+  const videoUri = item.video ? resolveImage(item.video) : null;
+  const CARD_HEIGHT = REEL_COL_WIDTH * 1.6; // taller portrait ratio matching Figma
+
   const views = item.views
     ? item.views >= 1000
       ? `${(item.views / 1000).toFixed(1)}k`
@@ -292,96 +302,103 @@ const ReelCard = ({ item, onPress }) => {
       onPress={onPress}
     >
       <View
-        style={{ position: 'relative', borderRadius: 14, overflow: 'hidden' }}
+        style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}
       >
         {thumb ? (
           <Image
             source={{ uri: thumb }}
-            style={{ width: REEL_COL_WIDTH, height: REEL_COL_WIDTH * 1.4 }}
+            style={{ width: REEL_COL_WIDTH, height: CARD_HEIGHT }}
             resizeMode="cover"
           />
-        ) : (
+        ) : videoUri ? (
           <Video
-            source={{ uri: item.video }}
-            style={{ width: REEL_COL_WIDTH, height: REEL_COL_WIDTH * 1.4 }}
+            source={{ uri: videoUri }}
+            style={{ width: REEL_COL_WIDTH, height: CARD_HEIGHT }}
             resizeMode="cover"
             muted
             paused
             repeat={false}
           />
+        ) : (
+          <View
+            style={{
+              width: REEL_COL_WIDTH,
+              height: CARD_HEIGHT,
+              backgroundColor: '#E2E8F0',
+            }}
+          />
         )}
-        {/* dark overlay */}
+
+        {/* Subtle dark gradient overlay at bottom for readability */}
         <View
           style={{
             ...StyleSheet.absoluteFillObject,
-            backgroundColor: 'rgba(0,0,0,0.22)',
+            backgroundColor: 'rgba(0,0,0,0.12)',
           }}
         />
-        {/* play icon */}
-        <View
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: [{ translateX: -16 }, { translateY: -16 }],
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Play size={15} color="#fff" fill="#fff" />
-        </View>
-        {/* view count */}
+
+        {/* View count — top right, matches Figma */}
         {views ? (
           <View
             style={{
               position: 'absolute',
-              top: 8,
-              right: 8,
+              top: 9,
+              right: 9,
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              borderRadius: 10,
-              paddingHorizontal: 6,
-              paddingVertical: 3,
+              backgroundColor: 'rgba(0,0,0,0.52)',
+              borderRadius: 12,
+              paddingHorizontal: 7,
+              paddingVertical: 4,
               gap: 4,
             }}
           >
-            <Eye size={11} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>
+            <Eye size={11} color="#fff" strokeWidth={2} />
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
               {views}
             </Text>
           </View>
         ) : null}
-        {/* uploader name */}
+
+        {/* Uploader chip — bottom left, matches Figma (avatar + name on white/teal pill) */}
         {item.user?.name ? (
-          <View style={{ position: 'absolute', bottom: 8, left: 8 }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#E6F4EF',
-                borderRadius: 10,
-                paddingHorizontal: 6,
-                paddingVertical: 3,
-                gap: 4,
-              }}
+          <View
+            style={{
+              position: 'absolute',
+              bottom: 9,
+              left: 9,
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: 'rgba(255,255,255,0.93)',
+              borderRadius: 20,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              gap: 5,
+              maxWidth: REEL_COL_WIDTH - 18,
+            }}
+          >
+            {item.user.avatar ? (
+              <Image
+                source={{ uri: resolveImage(item.user.avatar) }}
+                style={{ width: 16, height: 16, borderRadius: 8 }}
+              />
+            ) : (
+              // Fallback colored circle if no avatar
+              <View
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: '#1F8A70',
+                }}
+              />
+            )}
+            <Text
+              style={{ fontSize: 11, fontWeight: '700', color: '#0F172A' }}
+              numberOfLines={1}
             >
-              {item.user.avatar ? (
-                <Image
-                  source={{ uri: item.user.avatar }}
-                  style={{ width: 14, height: 14, borderRadius: 7 }}
-                />
-              ) : null}
-              <Text
-                style={{ fontSize: 10, fontWeight: '600', color: '#1F8A70' }}
-              >
-                {item.user.name}
-              </Text>
-            </View>
+              {item.user.name}
+            </Text>
           </View>
         ) : null}
       </View>
@@ -394,38 +411,62 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { recentlyViewed, addViewed } = useRecentlyViewed();
+  // GPS location — used first; falls back to profile state if denied/unavailable
+  const { country: gpsCountry, state: gpsState, getLocation } = useLocation();
 
   // ── State ───────────────────────────────────────────────────────────────────
-  const [categoryMap, setCategoryMap] = useState({}); // { catName: [pkg] }
-  const [popularDests, setPopularDests] = useState([]); // sorted by rating
-  const [nearYouItems, setNearYouItems] = useState([]); // experiences matching state
-  const [reels, setReels] = useState([]); // video reels (2-col grid)
+  const [categoryMap, setCategoryMap] = useState({});
+  const [popularDests, setPopularDests] = useState([]);
+  const [nearYouItems, setNearYouItems] = useState([]);
+  const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [wishlist, setWishlist] = useState({});
   const [activeVideo, setActiveVideo] = useState(null);
 
-  // ── Data fetching ───────────────────────────────────────────────────────────
+  // Request GPS once on mount (non-blocking — if denied, profile state is used)
+  useEffect(() => {
+    getLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Data fetching — GPS location takes priority over profile state ─────────
   const fetchData = useCallback(async () => {
     try {
-      const userState = user?.state?.trim() || '';
+      // GPS location takes priority; fall back to profile state if GPS denied/unavailable
+      const effectiveState = (gpsState || user?.state || '').trim();
+      const effectiveCountry = (gpsCountry || user?.country || 'India').trim();
+      const hasLocation = !!(effectiveState || effectiveCountry);
 
       const calls = [
-        packagesAPI.getAll({ limit: 100 }), // all packages for curated
-        packagesAPI.getPopular(10), // top-rated packages for Popular Destinations
-        reelsAPI.getAll({ limit: 20 }),
+        // Curated — nearby-first: same state → same country → abroad
+        packagesAPI.getAll({
+          limit: 100,
+          ...(hasLocation
+            ? { userCountry: effectiveCountry, userState: effectiveState }
+            : {}),
+        }),
+        // Popular Destinations — scored by bookingCount + avgRating
+        packagesAPI.getPopular(10),
+        // Experiences Near You — exact country + state match
+        hasLocation
+          ? experiencesAPI.getByLocation({
+              country: effectiveCountry,
+              state: effectiveState,
+            })
+          : experiencesAPI.getAll({ limit: 10 }),
+        // Experience Reels — country + state match
+        hasLocation
+          ? reelsAPI.getByLocation({
+              country: effectiveCountry,
+              state: effectiveState,
+            })
+          : reelsAPI.getAll({ limit: 20 }),
       ];
 
-      // Only fetch experiences if user has a state set
-      if (userState) {
-        calls.push(experiencesAPI.getByLocation(userState));
-      } else {
-        calls.push(experiencesAPI.getAll({ limit: 10 }));
-      }
+      const [pkgRes, destRes, expRes, reelRes] = await Promise.all(calls);
 
-      const [pkgRes, destRes, reelRes, expRes] = await Promise.all(calls);
-
-      // ── Packages → group by category ─────────────────────────────────────
+      // ── Packages → Curated (nearby-first, backend already sorted) ──────────
       const allPkgs = (pkgRes.data?.packages || []).map(p => ({
         ...p,
         image_url: resolveImage(p.image_url),
@@ -433,47 +474,29 @@ const HomeScreen = () => {
       }));
 
       const map = {};
-      // Put ALL packages in one "Curated Packages" section on home (max 5 shown)
       if (allPkgs.length > 0) {
-        map['Curated Packages'] = allPkgs.slice(0, 5);
+        map['Curated Packages'] = allPkgs.slice(0, 6);
       }
       setCategoryMap(map);
 
-      // ── Popular Destinations → top-rated packages sorted by avgRating desc ──
-      const popularPkgs = destRes.data?.packages || [];
-      setPopularDests(popularPkgs);
+      // ── Popular Destinations — scored by bookingCount + avgRating ──────────
+      setPopularDests(destRes.data?.packages || []);
 
-      // ── Reels ─────────────────────────────────────────────────────────────
-      setReels(reelRes.data?.reels || []);
-
-      // ── Experiences Near You ─────────────────────────────────────────────
-      // Try experiences API first; if empty, fall back to packages
-      // matching the user's state so the section is never empty
+      // ── Experiences Near You ───────────────────────────────────────────────
       const expItems = expRes.data?.experiences || [];
-      if (expItems.length > 0) {
-        setNearYouItems(expItems);
-      } else {
-        // Fallback: packages whose location contains the user's state keyword
-        const keyword = userState.toLowerCase();
-        const fallback = keyword
-          ? allPkgs
-              .filter(
-                p =>
-                  (p.location || '').toLowerCase().includes(keyword) ||
-                  (p.destination || '').toLowerCase().includes(keyword),
-              )
-              .slice(0, 8)
-          : allPkgs.slice(0, 8); // no state → just show first 8 packages
-        setNearYouItems(fallback);
-      }
-    } catch (err) {
-      console.warn('HomeScreen fetch error:', err.message);
+      setNearYouItems(expItems.length > 0 ? expItems : allPkgs.slice(0, 8));
+
+      // ── Experience Reels — location-matched ───────────────────────────────
+      setReels(reelRes.data?.reels || []);
+    } catch {
+      // Silently fail — sections will just be empty
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.state]);
+  }, [user?.state, user?.country, gpsState, gpsCountry]);
 
+  // Re-fetch when GPS location becomes available (may fire after initial render)
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -492,8 +515,37 @@ const HomeScreen = () => {
     navigation.navigate('PackageDetails', { package: pkg });
   };
 
+  // Popular Destinations and Experiences Near You navigate to DestinationDetail
+  // but still need to be tracked in recently viewed
+  const openDestination = item => {
+    // Normalize so addViewed always has title + image_url
+    const normalized = {
+      ...item,
+      title: item.title || item.name || '',
+      image_url: item.image_url || item.image || '',
+    };
+    addViewed(normalized);
+    navigation.navigate('DestinationDetail', { destination: item });
+  };
+
   const categoryEntries = Object.entries(categoryMap);
   const userState = user?.state?.trim() || '';
+  const userCountry = user?.country?.trim() || 'India';
+  // Effective location — GPS first, profile fallback
+  const effectiveState = (gpsState || userState).trim();
+  const effectiveCountry = (gpsCountry || userCountry).trim();
+  // Label for "Experiences Near You" section
+  const nearYouLabel = effectiveState
+    ? `Experiences in ${effectiveState}`
+    : effectiveCountry && effectiveCountry !== 'India'
+    ? `Experiences in ${effectiveCountry}`
+    : 'Experiences Near You';
+  // Label for reel section
+  const reelLabel = effectiveState
+    ? `Experience Reels in ${effectiveState}`
+    : effectiveCountry && effectiveCountry !== 'India'
+    ? `Experience Reels in ${effectiveCountry}`
+    : 'Experience Reels';
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -507,7 +559,7 @@ const HomeScreen = () => {
           style={styles.searchBar}
           activeOpacity={0.85}
         >
-          <Search size={20} color="#64748B" />
+          <Search size={22} color="#374151" strokeWidth={2.5} />
           <Text style={styles.searchPlaceholder}>
             Find your next trip or experience
           </Text>
@@ -564,11 +616,7 @@ const HomeScreen = () => {
               renderItem={({ item }) => (
                 <DestCard
                   item={item}
-                  onPress={() =>
-                    navigation.navigate('DestinationDetail', {
-                      destination: item,
-                    })
-                  }
+                  onPress={() => openDestination(item)}
                   onWishlist={() => toggleWishlist(item._id)}
                   inWishlist={!!wishlist[item._id]}
                 />
@@ -625,23 +673,13 @@ const HomeScreen = () => {
         {/* ── Experiences Near You (cards) ───────────────────────────────── */}
         {loading ? (
           <View style={styles.section}>
-            <SectionHeader
-              title={
-                userState
-                  ? `Experiences in ${userState}`
-                  : 'Experiences Near You'
-              }
-            />
+            <SectionHeader title={nearYouLabel} />
             <ActivityIndicator size="small" color="#1F8A70" />
           </View>
         ) : nearYouItems.length > 0 ? (
           <View style={styles.section}>
             <SectionHeader
-              title={
-                userState
-                  ? `Experiences in ${userState}`
-                  : 'Experiences Near You'
-              }
+              title={nearYouLabel}
               onSeeAll={() => navigation.navigate('ExperiencesNearYou')}
             />
             <FlatList
@@ -649,14 +687,9 @@ const HomeScreen = () => {
               renderItem={({ item }) => (
                 <PackageCard
                   item={{ ...item, title: item.name || item.title }}
-                  onPress={() =>
-                    navigation.navigate('DestinationDetail', {
-                      destination: item,
-                    })
-                  }
+                  onPress={() => openDestination(item)}
                   onWishlist={() => toggleWishlist(item._id)}
                   inWishlist={!!wishlist[item._id]}
-                  wide
                 />
               )}
               keyExtractor={item => String(item._id)}
@@ -671,10 +704,10 @@ const HomeScreen = () => {
         {reels.length > 0 && (
           <View style={styles.section}>
             <SectionHeader
-              title="Experiences Near You"
+              title={reelLabel}
               onSeeAll={() => navigation.navigate('GuestFavorites')}
             />
-            {/* 2-col grid */}
+            {/* 2-col reel grid — matches Figma layout */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
               {reels.map(item => (
                 <ReelCard
@@ -761,25 +794,25 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingHorizontal: 18,
+    gap: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
   },
   searchPlaceholder: {
     color: '#94A3B8',
-    fontSize: 14,
+    fontSize: 15,
     flex: 1,
   },
   section: {
     paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 4,
+    paddingTop: 22,
+    paddingBottom: 6,
     backgroundColor: '#fff',
   },
   sectionHeaderRow: {
@@ -789,48 +822,64 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sectionHeading: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#0F172A',
-    fontFamily: 'Inter_28pt-Regular',
+    letterSpacing: -0.3,
   },
+  // Badge — solid teal background, white text (matches design)
   badge: {
     position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: '#E6F4EF',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    top: 9,
+    left: 9,
+    backgroundColor: '#1F8A70',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
-  badgeText: { fontSize: 11, fontWeight: '700', color: '#1F8A70' },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.2,
+  },
+  // Heart button — white circle background, gray heart (matches design)
   heartBtn: {
     position: 'absolute',
     top: 8,
     right: 8,
-    padding: 6,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    width: 32,
+    height: 32,
     borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
   },
   cardTitle: {
-    marginTop: 8,
-    fontWeight: '600',
+    marginTop: 9,
+    fontWeight: '700',
     color: '#0F172A',
-    fontSize: 14,
+    fontSize: 15,
   },
   cardLocation: {
     fontSize: 12,
     color: '#94A3B8',
+    flex: 1,
   },
   cardMeta: {
-    marginLeft: 4,
-    fontSize: 12,
+    fontSize: 13,
     color: '#64748B',
+    fontWeight: '500',
   },
   cardPrice: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#1F8A70',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   emptyText: { color: '#94A3B8', fontSize: 13, paddingBottom: 8 },
   // Video modal

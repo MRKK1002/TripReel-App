@@ -24,7 +24,12 @@ import {
   Tag,
   MapPin,
 } from 'lucide-react-native';
-import { tripBookingsAPI, settingsAPI, SERVER_URL } from '../services/api';
+import {
+  tripBookingsAPI,
+  couponsAPI,
+  settingsAPI,
+  SERVER_URL,
+} from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import './../../android/app/src/utils/globalFont.js';
 
@@ -44,11 +49,15 @@ const BookingScreen = () => {
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [couponCode, setCouponCode] = useState('');
-  const [discount, setDiscount] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [couponApplied, setCouponApplied] = useState(false);
+  const [appliedCouponDesc, setAppliedCouponDesc] = useState('');
   const [gstPercent, setGstPercent] = useState(5);
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
+  const [showCouponModal, setShowCouponModal] = useState(false);
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
   const [booking, setBooking] = useState(false);
 
   // Fetch GST from settings
@@ -70,39 +79,60 @@ const BookingScreen = () => {
   const childSubtotal = childPrice * children;
   const subtotal = adultSubtotal + childSubtotal;
   const gstAmount = Math.round((subtotal * gstPercent) / 100);
-  const discountAmount =
-    discount > 0 ? Math.round((subtotal * discount) / 100) : 0;
   const totalAmount = subtotal + gstAmount - discountAmount;
 
   const seatsLeft = selectedBatch
     ? (selectedBatch.totalSeats || 0) - (selectedBatch.bookedSeats || 0)
     : 99;
 
-  // ── Apply coupon ───────────────────────────────────────────────────────────
-  const handleApplyCoupon = () => {
-    if (!couponCode.trim()) return;
-    // Check against package offer coupon
-    const pkgCoupon = destination?.offer?.couponCode || '';
-    if (
-      pkgCoupon &&
-      couponCode.trim().toUpperCase() === pkgCoupon.toUpperCase()
-    ) {
-      // Give 10% discount (or you can make this dynamic from offer)
-      setDiscount(10);
-      setCouponApplied(true);
-      Alert.alert('Coupon Applied!', '10% discount applied to your booking.');
-    } else {
+  // ── Apply coupon via API ─────────────────────────────────────────────────────
+  const fetchAvailableCoupons = async () => {
+    if (!batchId) return;
+    setCouponsLoading(true);
+    try {
+      const res = await couponsAPI.getForBatch(batchId);
+      setAvailableCoupons(res.data?.coupons || []);
+    } catch {
+      setAvailableCoupons([]);
+    } finally {
+      setCouponsLoading(false);
+    }
+  };
+
+  const handleApplyCoupon = async code => {
+    if (!code?.trim()) return;
+    try {
+      const res = await couponsAPI.validate({
+        batchId,
+        code: code.trim(),
+        guests: totalSeats,
+        subtotal,
+      });
+      if (res.data.success) {
+        setCouponCode(code.trim().toUpperCase());
+        setDiscountAmount(res.data.discountAmount);
+        setCouponApplied(true);
+        setAppliedCouponDesc(
+          res.data.coupon?.description ||
+            `${res.data.coupon?.value}${
+              res.data.coupon?.type === 'percentage' ? '%' : '₹'
+            } off`,
+        );
+        setShowCouponModal(false);
+      }
+    } catch (err) {
       Alert.alert(
-        'Invalid Coupon',
-        'This coupon code is not valid for this package.',
+        'Coupon Error',
+        err?.response?.data?.message || 'Invalid coupon',
       );
     }
   };
 
   const removeCoupon = () => {
-    setDiscount(0);
+    setDiscountAmount(0);
     setCouponApplied(false);
     setCouponCode('');
+    setAppliedCouponDesc('');
   };
 
   // ── Confirm booking ────────────────────────────────────────────────────────
@@ -126,6 +156,7 @@ const BookingScreen = () => {
         batchId,
         seats: totalSeats,
         travelerNames: [user?.name || ''],
+        couponCode: couponApplied ? couponCode : '',
       });
       Alert.alert(
         'Booking Confirmed! ✓',
@@ -382,102 +413,62 @@ const BookingScreen = () => {
           </View>
         )}
 
-        {/* Apply Discount */}
-        <View
+        {/* Apply Discount — tappable row like design */}
+        <TouchableOpacity
+          onPress={() => {
+            fetchAvailableCoupons();
+            setShowCouponModal(true);
+          }}
           style={{
             backgroundColor: '#fff',
             borderRadius: 14,
             padding: 14,
             marginBottom: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
           }}
         >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginBottom: 10,
-            }}
-          >
-            <Tag size={16} color="#6B7280" />
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: '600',
-                color: '#111827',
-                marginLeft: 8,
-              }}
-            >
-              Apply Discount
-            </Text>
+          <View style={iconBox}>
+            <Tag size={18} color="#6B7280" />
+          </View>
+          <View style={{ flex: 1 }}>
+            {couponApplied ? (
+              <>
+                <Text
+                  style={{ fontSize: 14, fontWeight: '600', color: '#065F46' }}
+                >
+                  {couponCode} applied
+                </Text>
+                <Text style={{ fontSize: 11, color: '#10B981', marginTop: 2 }}>
+                  {appliedCouponDesc} — ₹
+                  {discountAmount.toLocaleString('en-IN')} off
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text
+                  style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}
+                >
+                  Apply Discounts
+                </Text>
+                <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                  Bank Offers & Coupons
+                </Text>
+              </>
+            )}
           </View>
           {couponApplied ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#D1FAE5',
-                borderRadius: 8,
-                padding: 10,
-              }}
-            >
-              <Check size={14} color="#10B981" />
+            <TouchableOpacity onPress={removeCoupon} hitSlop={8}>
               <Text
-                style={{
-                  flex: 1,
-                  marginLeft: 8,
-                  fontSize: 13,
-                  color: '#065F46',
-                  fontWeight: '600',
-                }}
+                style={{ fontSize: 12, color: '#EF4444', fontWeight: '600' }}
               >
-                {couponCode.toUpperCase()} — {discount}% off applied
+                Remove
               </Text>
-              <TouchableOpacity onPress={removeCoupon}>
-                <Text
-                  style={{ fontSize: 12, color: '#EF4444', fontWeight: '600' }}
-                >
-                  Remove
-                </Text>
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           ) : (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TextInput
-                value={couponCode}
-                onChangeText={setCouponCode}
-                placeholder="Enter coupon code"
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="characters"
-                style={{
-                  flex: 1,
-                  borderWidth: 1,
-                  borderColor: '#E5E7EB',
-                  borderRadius: 10,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  fontSize: 14,
-                  color: '#111827',
-                  backgroundColor: '#F9FAFB',
-                }}
-              />
-              <TouchableOpacity
-                onPress={handleApplyCoupon}
-                style={{
-                  backgroundColor: '#1F8A70',
-                  borderRadius: 10,
-                  paddingHorizontal: 16,
-                  justifyContent: 'center',
-                }}
-              >
-                <Text
-                  style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}
-                >
-                  Apply
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <ChevronRight size={18} color="#9CA3AF" />
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* Policies */}
         <View
@@ -691,7 +682,7 @@ const BookingScreen = () => {
             />
             {discountAmount > 0 && (
               <PriceRow
-                label={`Discount (${discount}%)`}
+                label={`Coupon (${couponCode})`}
                 value={`-₹${discountAmount.toLocaleString('en-IN')}`}
                 green
               />
@@ -721,6 +712,187 @@ const BookingScreen = () => {
               <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
                 Close
               </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Coupon Selection Modal ─────────────────────────────────────────── */}
+      <Modal visible={showCouponModal} transparent animationType="slide">
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'flex-end',
+            backgroundColor: 'rgba(0,0,0,0.4)',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 24,
+              maxHeight: '70%',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: '#111827',
+                marginBottom: 16,
+              }}
+            >
+              Available Coupons
+            </Text>
+
+            {couponsLoading ? (
+              <ActivityIndicator
+                color="#1F8A70"
+                style={{ marginVertical: 24 }}
+              />
+            ) : availableCoupons.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <Tag size={32} color="#D1D5DB" />
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 10 }}>
+                  No coupons available for this batch
+                </Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {availableCoupons.map((c, i) => (
+                  <TouchableOpacity
+                    key={c._id || i}
+                    onPress={() => handleApplyCoupon(c.code)}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      borderRadius: 12,
+                      padding: 14,
+                      marginBottom: 10,
+                      backgroundColor: '#F9FAFB',
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <View
+                        style={{
+                          backgroundColor: '#E6F4EF',
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 6,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: '700',
+                            color: '#1F8A70',
+                            letterSpacing: 1,
+                          }}
+                        >
+                          {c.code}
+                        </Text>
+                      </View>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: '700',
+                          color: '#2563EB',
+                        }}
+                      >
+                        {c.type === 'percentage'
+                          ? `${c.value}% OFF`
+                          : `₹${c.value} OFF`}
+                      </Text>
+                    </View>
+                    {c.description ? (
+                      <Text
+                        style={{ fontSize: 12, color: '#374151', marginTop: 8 }}
+                      >
+                        {c.description}
+                      </Text>
+                    ) : null}
+                    <View
+                      style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}
+                    >
+                      {c.minGuests > 0 && (
+                        <Text style={{ fontSize: 11, color: '#9CA3AF' }}>
+                          Min {c.minGuests} guests
+                        </Text>
+                      )}
+                      {c.minOrderAmount > 0 && (
+                        <Text style={{ fontSize: 11, color: '#9CA3AF' }}>
+                          Min ₹{c.minOrderAmount}
+                        </Text>
+                      )}
+                      {c.maxDiscount > 0 && (
+                        <Text style={{ fontSize: 11, color: '#9CA3AF' }}>
+                          Max ₹{c.maxDiscount} off
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            {/* Manual entry */}
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: 8,
+                marginTop: 12,
+                borderTopWidth: 1,
+                borderTopColor: '#F3F4F6',
+                paddingTop: 12,
+              }}
+            >
+              <TextInput
+                value={couponCode}
+                onChangeText={setCouponCode}
+                placeholder="Or enter code manually"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="characters"
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  fontSize: 14,
+                  color: '#111827',
+                  backgroundColor: '#F9FAFB',
+                }}
+              />
+              <TouchableOpacity
+                onPress={() => handleApplyCoupon(couponCode)}
+                style={{
+                  backgroundColor: '#1F8A70',
+                  borderRadius: 10,
+                  paddingHorizontal: 16,
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}
+                >
+                  Apply
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => setShowCouponModal(false)}
+              style={{ marginTop: 16, alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 14, color: '#6B7280' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>

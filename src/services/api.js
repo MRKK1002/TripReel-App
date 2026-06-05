@@ -127,4 +127,12 @@ export const settingsAPI = {
   getPublic: () => api.get('/settings/public'),
 };
 
+// Coupon endpoints
+export const couponsAPI = {
+  // Get available coupons for a batch (shown in "Apply Discounts" sheet)
+  getForBatch: batchId => api.get('/coupons', { params: { batchId } }),
+  // Validate a coupon code
+  validate: data => api.post('/coupons/validate', data),
+};
+
 export default api;

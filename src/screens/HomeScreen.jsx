@@ -454,7 +454,7 @@ const HomeScreen = () => {
       const hasLocation = !!(effectiveState || effectiveCountry);
 
       const calls = [
-        // Curated — nearby-first: same state → same country → abroad
+        // ALL packages — nearby-first sort (backend aggregation handles priority)
         packagesAPI.getAll({
           limit: 100,
           ...(hasLocation
@@ -463,31 +463,20 @@ const HomeScreen = () => {
         }),
         // Popular Destinations — scored by bookingCount + avgRating
         packagesAPI.getPopular(10),
-        // Experiences Near You — exact country + state match
-        hasLocation
-          ? experiencesAPI.getByLocation({
-              country: effectiveCountry,
-              state: effectiveState,
-            })
-          : experiencesAPI.getAll({ limit: 10 }),
-        // Experience Reels — country + state match
-        hasLocation
-          ? reelsAPI.getByLocation({
-              country: effectiveCountry,
-              state: effectiveState,
-            })
-          : reelsAPI.getAll({ limit: 20 }),
+        // Experience Reels
+        reelsAPI.getAll({ limit: 20 }),
       ];
 
-      const [pkgRes, destRes, expRes, reelRes] = await Promise.all(calls);
+      const [pkgRes, destRes, reelRes] = await Promise.all(calls);
 
-      // ── Packages → Curated (nearby-first, backend already sorted) ──────────
+      // ── Packages → all sections sourced from same data ─────────────────────
       const allPkgs = (pkgRes.data?.packages || []).map(p => ({
         ...p,
         image_url: resolveImage(p.image_url),
         images: (p.images || []).map(resolveImage).filter(Boolean),
       }));
 
+      // Curated Packages — first 6 (already nearby-sorted by backend)
       const map = {};
       if (allPkgs.length > 0) {
         map['Curated Packages'] = allPkgs.slice(0, 6);
@@ -495,27 +484,26 @@ const HomeScreen = () => {
       setCategoryMap(map);
 
       // ── Popular Destinations — scored by bookingCount + avgRating ──────────
-      setPopularDests(destRes.data?.packages || []);
+      const popularPkgs = (destRes.data?.packages || []).map(p => ({
+        ...p,
+        image_url: resolveImage(p.image_url),
+        images: (p.images || []).map(resolveImage).filter(Boolean),
+      }));
+      setPopularDests(popularPkgs);
 
-      // ── Experiences Near You ───────────────────────────────────────────────
-      const expItems = expRes.data?.experiences || [];
-      setNearYouItems(expItems.length > 0 ? expItems : allPkgs.slice(0, 8));
+      // ── Experiences Near You — packages matching user's state ──────────────
+      const nearbyPkgs = effectiveState
+        ? allPkgs.filter(
+            p => (p.state || '').toLowerCase() === effectiveState.toLowerCase(),
+          )
+        : [];
+      // If state-filtered has results use them, else show first 8 from all
+      setNearYouItems(
+        nearbyPkgs.length > 0 ? nearbyPkgs.slice(0, 8) : allPkgs.slice(0, 8),
+      );
 
-      // ── Experience Reels — location-matched, fallback to all if empty ────
-      const reelItems = reelRes.data?.reels || [];
-      if (reelItems.length > 0) {
-        setReels(reelItems);
-      } else if (hasLocation) {
-        // No reels for this state — fetch all reels as fallback
-        try {
-          const fallbackRes = await reelsAPI.getAll({ limit: 20 });
-          setReels(fallbackRes.data?.reels || []);
-        } catch {
-          setReels([]);
-        }
-      } else {
-        setReels([]);
-      }
+      // ── Experience Reels — show all (already fetched without filter) ───────
+      setReels(reelRes.data?.reels || []);
     } catch {
       // Silently fail — sections will just be empty
     } finally {

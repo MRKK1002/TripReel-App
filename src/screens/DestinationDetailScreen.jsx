@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { SERVER_URL } from '../services/api';
 import {
   ArrowLeft,
   MapPin,
@@ -30,6 +31,14 @@ import {
 import './../../android/app/src/utils/globalFont.js';
 
 const { width } = Dimensions.get('window');
+
+// Resolve relative /uploads/... paths to full URLs
+const resolveUrl = url => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const path = url.startsWith('/') ? url : `/${url}`;
+  return `${SERVER_URL}${path}`;
+};
 
 const DestinationDetailScreen = () => {
   const navigation = useNavigation();
@@ -48,7 +57,12 @@ const DestinationDetailScreen = () => {
   const imageOpacity = useRef(new Animated.Value(1)).current;
   const activeImageIndexRef = useRef(0);
 
-  const images = destination.images ?? [destination.image_url];
+  // Build image list: cover first + all operator-uploaded images, fully resolved
+  const rawImages = [
+    destination?.image_url,
+    ...(destination?.images || []),
+  ];
+  const images = rawImages.map(resolveUrl).filter(Boolean);
   const priceStr = `₹${destination.price?.toLocaleString('en-IN') ?? '12,999'}`;
   const dates = [
     { label: '12-14 Feb 2026', price: priceStr },
@@ -301,13 +315,16 @@ const DestinationDetailScreen = () => {
                 }}
               >
                 <MapPin size={20} color="#3B4A6B" strokeWidth={1.8} />
-                <View style={{ marginLeft: 10 }}>
+                <View style={{ marginLeft: 10, flex: 1 }}>
                   <Text
                     style={{
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: '700',
                       color: '#1E2A45',
                     }}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
                   >
                     {destination.location}
                   </Text>
@@ -322,6 +339,7 @@ const DestinationDetailScreen = () => {
               <View
                 style={{
                   width: 1,
+                  alignSelf: 'stretch',
                   backgroundColor: '#C7D0E8',
                   marginVertical: 10,
                 }}
@@ -341,17 +359,22 @@ const DestinationDetailScreen = () => {
                     height: 22,
                     alignItems: 'center',
                     justifyContent: 'center',
+                    flexShrink: 0,
+                    transform: [{ scaleX: -1 }],
                   }}
                 >
                   <Tag size={20} color="#3B4A6B" strokeWidth={1.8} />
                 </View>
-                <View style={{ marginLeft: 10 }}>
+                <View style={{ marginLeft: 10, flex: 1 }}>
                   <Text
                     style={{
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: '700',
                       color: '#1E2A45',
                     }}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
                   >
                     {destination.priceLabel}
                   </Text>
@@ -364,6 +387,9 @@ const DestinationDetailScreen = () => {
               </View>
             </View>
           </View>
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
 
           {/* Highlights card */}
           <View
@@ -438,6 +464,9 @@ const DestinationDetailScreen = () => {
             </TouchableOpacity>
           </View>
 
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
+
           {/* About This Trip */}
           <View
             style={{
@@ -478,6 +507,9 @@ const DestinationDetailScreen = () => {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
 
           {/* Itinerary */}
           <View
@@ -592,6 +624,9 @@ const DestinationDetailScreen = () => {
             )}
           </View>
 
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
+
           {/* Available Dates & Pricing */}
           <View
             style={{
@@ -646,6 +681,9 @@ const DestinationDetailScreen = () => {
               ))}
             </View>
           </View>
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
 
           {/* Inclusions / Exclusions */}
           <View
@@ -716,6 +754,9 @@ const DestinationDetailScreen = () => {
               </>
             )}
           </View>
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
 
           {/* Add-ons */}
           {destination.addons?.length > 0 && (
@@ -915,6 +956,9 @@ const DestinationDetailScreen = () => {
               ))}
             </View>
           )}
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
 
           {/* Policies */}
           <View

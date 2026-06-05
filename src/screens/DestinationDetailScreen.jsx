@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -12,10 +10,12 @@ import {
   Animated,
   Share,
   PanResponder,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { SERVER_URL } from '../services/api';
+import { SERVER_URL, batchesAPI, settingsAPI } from '../services/api';
+import { useWishlist } from '../context/WishlistContext';
 import {
   ArrowLeft,
   MapPin,
@@ -43,7 +43,8 @@ const resolveUrl = url => {
 const DestinationDetailScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { destination } = route.params;
+  // Handle both navigation patterns: { destination } or { package }
+  const destination = route.params?.destination || route.params?.package;
 
   const [showMoreHighlights, setShowMoreHighlights] = useState(false);
   const [showFullAbout, setShowFullAbout] = useState(false);
@@ -52,69 +53,125 @@ const DestinationDetailScreen = () => {
   const [showPolicies, setShowPolicies] = useState(true);
   const [selectedDate, setSelectedDate] = useState(0);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [wishlisted, setWishlisted] = useState(false);
   const scrollViewRef = useRef(null);
   const imageOpacity = useRef(new Animated.Value(1)).current;
   const activeImageIndexRef = useRef(0);
 
+  // ── Dynamic wishlist ────────────────────────────────────────────────────────
+  const { isSaved, toggleWishlist } = useWishlist();
+  const wishlisted = isSaved(destination?._id);
+  const handleToggleWishlist = () => toggleWishlist(destination?._id);
+
+  // ── Dynamic batches (real dates from API) ──────────────────────────────────
+  const [batches, setBatches] = useState([]);
+  const [batchesLoading, setBatchesLoading] = useState(false);
+
+  // ── Platform policies from admin settings ──────────────────────────────────
+  const [policies, setPolicies] = useState({
+    cancellation: '',
+    refund: '',
+    terms: '',
+  });
+
+  useEffect(() => {
+    if (!destination?._id) return;
+    setBatchesLoading(true);
+    Promise.all([
+      batchesAPI.getForPackage(destination._id),
+      settingsAPI.getPublic(),
+    ])
+      .then(([batchRes, settingsRes]) => {
+        setBatches(batchRes.data?.batches || []);
+        const s = settingsRes.data || {};
+        setPolicies({
+          cancellation: s.default_cancellation_policy || '',
+          refund: s.default_refund_policy || '',
+          terms: s.default_terms || '',
+        });
+      })
+      .catch(() => setBatches([]))
+      .finally(() => setBatchesLoading(false));
+  }, [destination?._id]);
+
   // Build image list: cover first + all operator-uploaded images, fully resolved
-  const rawImages = [
-    destination?.image_url,
-    ...(destination?.images || []),
-  ];
+  const rawImages = [destination?.image_url, ...(destination?.images || [])];
   const images = rawImages.map(resolveUrl).filter(Boolean);
   const priceStr = `₹${destination.price?.toLocaleString('en-IN') ?? '12,999'}`;
-  const dates = [
-    { label: '12-14 Feb 2026', price: priceStr },
-    { label: '12-14 Feb 2028', price: priceStr },
-  ];
 
-  const handleImageChange = (newIndex) => {
+  // Dates come from real batches now
+  const dates = batches.map((b, i) => {
+    const start = new Date(b.startDate);
+    const end = new Date(b.endDate);
+    const fmt = d =>
+      d.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    return {
+      label: `${fmt(start)} - ${fmt(end)}`,
+      price: `₹${Number(b.adultPrice || destination.price || 0).toLocaleString(
+        'en-IN',
+      )}`,
+      batchId: b._id,
+      isFull: b.totalSeats > 0 && b.bookedSeats >= b.totalSeats,
+      seatsLeft: (b.totalSeats || 0) - (b.bookedSeats || 0),
+    };
+  });
+
+  const handleImageChange = newIndex => {
     if (newIndex === activeImageIndexRef.current) return;
     if (newIndex >= 0 && newIndex < images.length) {
       Animated.sequence([
-        Animated.timing(imageOpacity, { 
-          toValue: 0, 
-          duration: 150, 
-          useNativeDriver: true 
+        Animated.timing(imageOpacity, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
         }),
-        Animated.timing(imageOpacity, { 
-          toValue: 1, 
-          duration: 150, 
-          useNativeDriver: true 
+        Animated.timing(imageOpacity, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
         }),
       ]).start();
 
       activeImageIndexRef.current = newIndex; // ✅ update ref
-      setActiveImageIndex(newIndex);          // ✅ update state for UI
+      setActiveImageIndex(newIndex); // ✅ update state for UI
     }
   };
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 20,
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dx) > 20,
       onPanResponderGrant: () => {
-        if (scrollViewRef.current) scrollViewRef.current.setNativeProps({ scrollEnabled: false });
+        if (scrollViewRef.current)
+          scrollViewRef.current.setNativeProps({ scrollEnabled: false });
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (scrollViewRef.current) scrollViewRef.current.setNativeProps({ scrollEnabled: true });
+        if (scrollViewRef.current)
+          scrollViewRef.current.setNativeProps({ scrollEnabled: true });
 
         if (Math.abs(gestureState.dx) > 50) {
           if (gestureState.dx > 0 && activeImageIndexRef.current > 0) {
             handleImageChange(activeImageIndexRef.current - 1); // ✅ reads latest
-          } else if (gestureState.dx < 0 && activeImageIndexRef.current < images.length - 1) {
+          } else if (
+            gestureState.dx < 0 &&
+            activeImageIndexRef.current < images.length - 1
+          ) {
             handleImageChange(activeImageIndexRef.current + 1); // ✅ reads latest
           }
         }
       },
       onPanResponderTerminate: () => {
-        if (scrollViewRef.current) scrollViewRef.current.setNativeProps({ scrollEnabled: true });
+        if (scrollViewRef.current)
+          scrollViewRef.current.setNativeProps({ scrollEnabled: true });
       },
-    })
+    }),
   ).current;
 
-  const handleImagePress = (index) => {
+  const handleImagePress = index => {
     handleImageChange(index);
   };
 
@@ -140,10 +197,7 @@ const DestinationDetailScreen = () => {
         style={{ backgroundColor: '#F8FAFC' }}
       >
         {/* Hero Image Carousel */}
-        <View 
-          style={{ height: 300 }}
-          {...panResponder.panHandlers}
-        >
+        <View style={{ height: 300 }} {...panResponder.panHandlers}>
           {images.map((img, i) => (
             <Animated.Image
               key={i}
@@ -179,7 +233,8 @@ const DestinationDetailScreen = () => {
                 style={{
                   flex: 1,
                   height: 3,
-                  backgroundColor: i === activeImageIndex ? '#fff' : 'rgba(255,255,255,0.5)',
+                  backgroundColor:
+                    i === activeImageIndex ? '#fff' : 'rgba(255,255,255,0.5)',
                   borderRadius: 2,
                 }}
               />
@@ -227,7 +282,7 @@ const DestinationDetailScreen = () => {
                   <Upload size={18} color="#fff" />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => setWishlisted(w => !w)}
+                  onPress={handleToggleWishlist}
                   style={{
                     width: 40,
                     height: 40,
@@ -284,10 +339,17 @@ const DestinationDetailScreen = () => {
                   marginLeft: 5,
                 }}
               >
-                {destination.rating}
+                {destination.avgRating || destination.rating || 4.5}
               </Text>
               <Text style={{ fontSize: 13, color: '#9CA3AF', marginLeft: 6 }}>
-                • {destination.reviews} reviews
+                • {destination.reviewCount || 0} reviews
+                {destination.bookingCount > 0
+                  ? ` • ${
+                      destination.bookingCount >= 1000
+                        ? `${(destination.bookingCount / 1000).toFixed(1)}K`
+                        : destination.bookingCount
+                    }+ booked`
+                  : ''}
               </Text>
             </View>
           </View>
@@ -389,7 +451,14 @@ const DestinationDetailScreen = () => {
           </View>
 
           {/* Divider */}
-          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
+          <View
+            style={{
+              height: 1,
+              backgroundColor: '#E5E7EB',
+              marginHorizontal: 16,
+              marginBottom: 12,
+            }}
+          />
 
           {/* Highlights card */}
           <View
@@ -465,7 +534,14 @@ const DestinationDetailScreen = () => {
           </View>
 
           {/* Divider */}
-          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
+          <View
+            style={{
+              height: 1,
+              backgroundColor: '#E5E7EB',
+              marginHorizontal: 16,
+              marginBottom: 12,
+            }}
+          />
 
           {/* About This Trip */}
           <View
@@ -509,7 +585,14 @@ const DestinationDetailScreen = () => {
           </View>
 
           {/* Divider */}
-          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
+          <View
+            style={{
+              height: 1,
+              backgroundColor: '#E5E7EB',
+              marginHorizontal: 16,
+              marginBottom: 12,
+            }}
+          />
 
           {/* Itinerary */}
           <View
@@ -625,7 +708,14 @@ const DestinationDetailScreen = () => {
           </View>
 
           {/* Divider */}
-          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
+          <View
+            style={{
+              height: 1,
+              backgroundColor: '#E5E7EB',
+              marginHorizontal: 16,
+              marginBottom: 12,
+            }}
+          />
 
           {/* Available Dates & Pricing */}
           <View
@@ -647,43 +737,106 @@ const DestinationDetailScreen = () => {
             >
               Available Dates & Pricing
             </Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              {dates.map((d, i) => (
-                <TouchableOpacity
-                  key={i}
-                  onPress={() => setSelectedDate(i)}
-                  style={{
-                    flex: 1,
-                    borderWidth: 1.5,
-                    borderColor: selectedDate === i ? '#1F8A70' : '#E5E7EB',
-                    backgroundColor: selectedDate === i ? '#EBFFF8' : '#FFF6F6',
-                    borderRadius: 10,
-                    padding: 10,
-                    alignItems: 'center',
-                  }}
+            {batchesLoading ? (
+              <ActivityIndicator
+                color="#1F8A70"
+                style={{ marginVertical: 12 }}
+              />
+            ) : dates.length === 0 ? (
+              <View
+                style={{
+                  backgroundColor: '#FEF3C7',
+                  borderRadius: 10,
+                  padding: 12,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 13, color: '#92400E', fontWeight: '500' }}
                 >
-                  <Text
-                    style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}
-                    className="w-full"
-                  >
-                    {d.label}
-                  </Text>
-                  <Text
+                  No upcoming departures scheduled
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 10 }}
+              >
+                {dates.map((d, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    onPress={() => !d.isFull && setSelectedDate(i)}
                     style={{
-                      fontSize: 15,
-                      fontWeight: '700',
-                      color: '#2563EB',
+                      minWidth: 150,
+                      borderWidth: 1.5,
+                      borderColor: selectedDate === i ? '#1F8A70' : '#E5E7EB',
+                      backgroundColor: d.isFull
+                        ? '#F1F5F9'
+                        : selectedDate === i
+                        ? '#EBFFF8'
+                        : '#fff',
+                      borderRadius: 10,
+                      padding: 10,
+                      alignItems: 'center',
+                      opacity: d.isFull ? 0.6 : 1,
                     }}
                   >
-                    {d.price}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: '#6B7280',
+                        marginBottom: 4,
+                      }}
+                    >
+                      {d.label}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        fontWeight: '700',
+                        color: d.isFull ? '#9CA3AF' : '#2563EB',
+                      }}
+                    >
+                      {d.price}
+                    </Text>
+                    {d.isFull ? (
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          color: '#EF4444',
+                          fontWeight: '600',
+                          marginTop: 3,
+                        }}
+                      >
+                        FULL
+                      </Text>
+                    ) : d.seatsLeft <= 5 ? (
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          color: '#F97316',
+                          fontWeight: '600',
+                          marginTop: 3,
+                        }}
+                      >
+                        {d.seatsLeft} left
+                      </Text>
+                    ) : null}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
           </View>
 
           {/* Divider */}
-          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
+          <View
+            style={{
+              height: 1,
+              backgroundColor: '#E5E7EB',
+              marginHorizontal: 16,
+              marginBottom: 12,
+            }}
+          />
 
           {/* Inclusions / Exclusions */}
           <View
@@ -756,7 +909,14 @@ const DestinationDetailScreen = () => {
           </View>
 
           {/* Divider */}
-          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
+          <View
+            style={{
+              height: 1,
+              backgroundColor: '#E5E7EB',
+              marginHorizontal: 16,
+              marginBottom: 12,
+            }}
+          />
 
           {/* Add-ons */}
           {destination.addons?.length > 0 && (
@@ -838,14 +998,13 @@ const DestinationDetailScreen = () => {
                       flexDirection: 'row',
                       justifyContent: 'space-between',
                       marginTop: 8,
-                      backgroundColor:
-                              i % 2 === 0 ? '#E7EDFA' : '#E7F2EE' ,
-                              padding:5,
-                              borderRadius:10
+                      backgroundColor: i % 2 === 0 ? '#E7EDFA' : '#E7F2EE',
+                      padding: 5,
+                      borderRadius: 10,
                     }}
                   >
                     {addon.details?.map((d, j) => (
-                      <View key={j} style={{ alignItems: 'center', flex: 1,    }}>
+                      <View key={j} style={{ alignItems: 'center', flex: 1 }}>
                         <View
                           style={{
                             width: 32,
@@ -878,7 +1037,7 @@ const DestinationDetailScreen = () => {
                             fontSize: 11,
                             color: '#334155',
                             textAlign: 'center',
-                            width:"100%"
+                            width: '100%',
                           }}
                         >
                           {d}
@@ -958,7 +1117,14 @@ const DestinationDetailScreen = () => {
           )}
 
           {/* Divider */}
-          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 16, marginBottom: 12 }} />
+          <View
+            style={{
+              height: 1,
+              backgroundColor: '#E5E7EB',
+              marginHorizontal: 16,
+              marginBottom: 12,
+            }}
+          />
 
           {/* Policies */}
           <View
@@ -997,49 +1163,148 @@ const DestinationDetailScreen = () => {
             </TouchableOpacity>
             {showPolicies && (
               <>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: '600',
-                    color: '#111827',
-                    marginBottom: 8,
-                  }}
-                >
-                  Cancellation Policy
-                </Text>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginBottom: 6,
-                  }}
-                >
-                  <Check size={14} color="#1F8A70" />
-                  <Text
-                    style={{ marginLeft: 8, fontSize: 13, color: '#374151' }}
+                {policies.cancellation ? (
+                  <>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: '600',
+                        color: '#111827',
+                        marginBottom: 8,
+                      }}
+                    >
+                      Cancellation Policy
+                    </Text>
+                    {policies.cancellation
+                      .split('.')
+                      .filter(Boolean)
+                      .map((line, i) => (
+                        <View
+                          key={i}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'flex-start',
+                            marginBottom: 6,
+                          }}
+                        >
+                          <Check
+                            size={14}
+                            color="#1F8A70"
+                            style={{ marginTop: 2 }}
+                          />
+                          <Text
+                            style={{
+                              marginLeft: 8,
+                              fontSize: 13,
+                              color: '#374151',
+                              flex: 1,
+                            }}
+                          >
+                            {line.trim()}
+                          </Text>
+                        </View>
+                      ))}
+                  </>
+                ) : (
+                  <>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: '600',
+                        color: '#111827',
+                        marginBottom: 8,
+                      }}
+                    >
+                      Cancellation Policy
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Check size={14} color="#1F8A70" />
+                      <Text
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 13,
+                          color: '#374151',
+                        }}
+                      >
+                        {destination.policies?.cancellationPolicy ||
+                          'Contact operator for cancellation policy'}
+                      </Text>
+                    </View>
+                  </>
+                )}
+
+                {policies.refund ? (
+                  <View style={{ marginTop: 12 }}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: '600',
+                        color: '#111827',
+                        marginBottom: 8,
+                      }}
+                    >
+                      Refund Policy
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'flex-start',
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Check
+                        size={14}
+                        color="#1F8A70"
+                        style={{ marginTop: 2 }}
+                      />
+                      <Text
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 13,
+                          color: '#374151',
+                          flex: 1,
+                        }}
+                      >
+                        {policies.refund}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* Seats available info */}
+                {batches.length > 0 && selectedDate < batches.length && (
+                  <View
+                    style={{
+                      marginTop: 16,
+                      backgroundColor: '#F0FDF4',
+                      borderRadius: 10,
+                      padding: 12,
+                    }}
                   >
-                    Free cancellation up to 5 days before travel
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginBottom: 16,
-                  }}
-                >
-                  <Check size={14} color="#1F8A70" />
-                  <Text
-                    style={{ marginLeft: 8, fontSize: 13, color: '#374151' }}
-                  >
-                    No refund after that
-                  </Text>
-                </View>
-                <Text
-                  style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}
-                >
-                  Payment Policy
-                </Text>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: '600',
+                        color: '#166534',
+                      }}
+                    >
+                      {(() => {
+                        const b = batches[selectedDate];
+                        const left = (b.totalSeats || 0) - (b.bookedSeats || 0);
+                        if (left <= 0) return '❌ This batch is fully booked';
+                        if (left <= 10)
+                          return `⚡ Only ${left} seats left — book soon!`;
+                        return `✅ ${left} seats available`;
+                      })()}
+                    </Text>
+                  </View>
+                )}
               </>
             )}
           </View>
@@ -1066,22 +1331,51 @@ const DestinationDetailScreen = () => {
       >
         <View>
           <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>
-          <Text style={{ fontSize: 11, color: '#9CA3AF' }}>From </Text>
-            {priceStr}
+            <Text style={{ fontSize: 11, color: '#9CA3AF' }}>From </Text>
+            {dates.length > 0 && selectedDate < dates.length
+              ? dates[selectedDate].price
+              : priceStr}
             <Text style={{ fontSize: 12, fontWeight: '400', color: '#6B7280' }}>
               {' '}
               /Guest
             </Text>
           </Text>
+          {dates.length > 0 &&
+            selectedDate < dates.length &&
+            dates[selectedDate].seatsLeft <= 5 &&
+            !dates[selectedDate].isFull && (
+              <Text
+                style={{ fontSize: 11, color: '#F97316', fontWeight: '600' }}
+              >
+                Only {dates[selectedDate].seatsLeft} seats left
+              </Text>
+            )}
         </View>
         <TouchableOpacity
           style={{
-            backgroundColor: '#1F8A70',
+            backgroundColor:
+              dates.length > 0 && dates[selectedDate]?.isFull
+                ? '#94A3B8'
+                : '#1F8A70',
             paddingHorizontal: 32,
             paddingVertical: 14,
             borderRadius: 12,
           }}
-          onPress={() => navigation.navigate('Booking', { destination })}
+          onPress={() => {
+            if (dates.length === 0) {
+              // No batches — navigate to booking screen as fallback
+              navigation.navigate('Booking', { destination });
+              return;
+            }
+            const selected = dates[selectedDate];
+            if (selected?.isFull) return;
+            // Navigate to booking with batch info
+            navigation.navigate('Booking', {
+              destination,
+              batchId: selected?.batchId,
+              selectedBatch: batches[selectedDate],
+            });
+          }}
         >
           <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
             Book Now

@@ -14,7 +14,6 @@ import SplashScreen from './src/screens/SplashScreen';
 import HomeScreen from './src/screens/HomeScreen';
 // import SliderScreen from './src/screens/SliderScreen';
 import { Animated } from 'react-native';
-import PackageDetailScreen from './src/components/PackageDetailScreen';
 // import MyTrip from './src/screens/MyTrip';
 import SavedScreen from './src/screens/SavedScreen';
 import HotelScreen from './src/screens/HotelScreen';
@@ -216,124 +215,124 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <WishlistProvider>
-        {/* <StatusBar backgroundColor="#000" barStyle="light-content" /> */}
-        <NavigationContainer>
-          <Stack.Navigator initialRouteName="Splash">
-            <Stack.Screen
-              name="Splash"
-              component={SplashScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="PackageDetails"
-              component={PackageDetailScreen}
-              options={{ headerShown: false }}
-            />
+          {/* <StatusBar backgroundColor="#000" barStyle="light-content" /> */}
+          <NavigationContainer>
+            <Stack.Navigator initialRouteName="Splash">
+              <Stack.Screen
+                name="Splash"
+                component={SplashScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="PackageDetails"
+                component={DestinationDetailScreen}
+                options={{ headerShown: false }}
+              />
 
-            <Stack.Screen
-              name="Offers"
-              component={OffersScreen}
-              options={{ title: 'Offers' }}
-            />
-            <Stack.Screen
-              name="Saved"
-              component={SavedScreen}
-              options={{ title: 'Saved Packages' }}
-            />
-            <Stack.Screen
-              name="Hotel"
-              component={HotelScreen}
-              options={{ title: 'Hotel' }}
-            />
-            <Stack.Screen
-              name="Main"
-              component={BottomTabs}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Itinerary"
-              component={ItineraryScreen}
-              options={{ headerShown: false }}
-            />
+              <Stack.Screen
+                name="Offers"
+                component={OffersScreen}
+                options={{ title: 'Offers' }}
+              />
+              <Stack.Screen
+                name="Saved"
+                component={SavedScreen}
+                options={{ title: 'Saved Packages' }}
+              />
+              <Stack.Screen
+                name="Hotel"
+                component={HotelScreen}
+                options={{ title: 'Hotel' }}
+              />
+              <Stack.Screen
+                name="Main"
+                component={BottomTabs}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Itinerary"
+                component={ItineraryScreen}
+                options={{ headerShown: false }}
+              />
 
-            <Stack.Screen
-              name="Profile"
-              component={ProfileScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Notification"
-              component={NotificationScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Register"
-              component={RegisterScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="RegisterScreen"
-              component={RegisterScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Welcome"
-              component={WelcomeScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Login"
-              component={LoginScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Search"
-              component={SearchScreen}
-              options={{ headerShown: false }}
-            />
+              <Stack.Screen
+                name="Profile"
+                component={ProfileScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Notification"
+                component={NotificationScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Register"
+                component={RegisterScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="RegisterScreen"
+                component={RegisterScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Welcome"
+                component={WelcomeScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Login"
+                component={LoginScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Search"
+                component={SearchScreen}
+                options={{ headerShown: false }}
+              />
 
-            <Stack.Screen
-              name="DestinationDetail"
-              component={DestinationDetailScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="PopularDestinations"
-              component={PopularDestinationScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="CuratedPackages"
-              component={CuratedPackagesScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ExperiencesNearYou"
-              component={ExperiencesNearYouScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="GuestFavorites"
-              component={GuestFavoritesScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Booking"
-              component={BookingScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="BookingDetails"
-              component={BookingDetailsScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Messages"
-              component={MessagesScreen}
-              options={{ headerShown: false }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
+              <Stack.Screen
+                name="DestinationDetail"
+                component={DestinationDetailScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="PopularDestinations"
+                component={PopularDestinationScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="CuratedPackages"
+                component={CuratedPackagesScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="ExperiencesNearYou"
+                component={ExperiencesNearYouScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="GuestFavorites"
+                component={GuestFavoritesScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Booking"
+                component={BookingScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="BookingDetails"
+                component={BookingDetailsScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Messages"
+                component={MessagesScreen}
+                options={{ headerShown: false }}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
         </WishlistProvider>
       </AuthProvider>
     </SafeAreaProvider>

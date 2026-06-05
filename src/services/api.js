@@ -97,6 +97,16 @@ export const reelsAPI = {
     api.get('/reels', { params: { ...params, country, state, limit: 20 } }),
 };
 
+// Wishlist endpoints (user — requires auth)
+export const wishlistAPI = {
+  getMyWishlists: () => api.get('/wishlists/my'),
+  createWishlist: data => api.post('/wishlists', data),
+  addPackage: (wishlistId, packageId) =>
+    api.post(`/wishlists/${wishlistId}/packages`, { packageId }),
+  removePackage: (wishlistId, packageId) =>
+    api.delete(`/wishlists/${wishlistId}/packages/${packageId}`),
+};
+
 // ── New booking system ────────────────────────────────────────────────────────
 
 // Batch endpoints — upcoming departures for a package

@@ -32,6 +32,7 @@ import {
   SERVER_URL,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
 import { useRecentlyViewed, timeAgo } from '../hooks/useRecentlyViewed';
 import { useLocation } from '../hooks/useLocation';
 import './../../android/app/src/utils/globalFont.js';
@@ -421,8 +422,10 @@ const HomeScreen = () => {
   const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [wishlist, setWishlist] = useState({});
   const [activeVideo, setActiveVideo] = useState(null);
+
+  // Wishlist from context — real backend API
+  const { isSaved, toggleWishlist: ctxToggleWishlist } = useWishlist();
 
   // Request GPS once on mount (non-blocking — if denied, profile state is used)
   useEffect(() => {
@@ -506,13 +509,12 @@ const HomeScreen = () => {
     fetchData();
   }, [fetchData]);
 
-  // ── Wishlist helpers ────────────────────────────────────────────────────────
-  const toggleWishlist = id =>
-    setWishlist(prev => ({ ...prev, [id]: !prev[id] }));
+  // ── Wishlist — uses real backend via WishlistContext ─────────────────────────
+  const toggleWishlist = id => ctxToggleWishlist(id);
 
   const openPackage = pkg => {
     addViewed(pkg);
-    navigation.navigate('PackageDetails', { package: pkg });
+    navigation.navigate('DestinationDetail', { destination: pkg });
   };
 
   // Popular Destinations and Experiences Near You navigate to DestinationDetail
@@ -587,7 +589,9 @@ const HomeScreen = () => {
                 <RecentCard
                   item={item}
                   onPress={() =>
-                    navigation.navigate('PackageDetails', { package: item })
+                    navigation.navigate('DestinationDetail', {
+                      destination: item,
+                    })
                   }
                 />
               )}
@@ -618,7 +622,7 @@ const HomeScreen = () => {
                   item={item}
                   onPress={() => openDestination(item)}
                   onWishlist={() => toggleWishlist(item._id)}
-                  inWishlist={!!wishlist[item._id]}
+                  inWishlist={isSaved(item._id)}
                 />
               )}
               keyExtractor={item => String(item._id)}
@@ -653,7 +657,7 @@ const HomeScreen = () => {
                     item={item}
                     onPress={() => openPackage(item)}
                     onWishlist={() => toggleWishlist(item._id)}
-                    inWishlist={!!wishlist[item._id]}
+                    inWishlist={isSaved(item._id)}
                   />
                 )}
                 keyExtractor={item => item._id}
@@ -689,7 +693,7 @@ const HomeScreen = () => {
                   item={{ ...item, title: item.name || item.title }}
                   onPress={() => openDestination(item)}
                   onWishlist={() => toggleWishlist(item._id)}
-                  inWishlist={!!wishlist[item._id]}
+                  inWishlist={isSaved(item._id)}
                 />
               )}
               keyExtractor={item => String(item._id)}

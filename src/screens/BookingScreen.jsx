@@ -60,6 +60,10 @@ const BookingScreen = () => {
   const [appliedCouponDesc, setAppliedCouponDesc] = useState('');
   const [appliedCouponMinGuests, setAppliedCouponMinGuests] = useState(0);
   const [gstPercent, setGstPercent] = useState(5);
+  const [adminPolicies, setAdminPolicies] = useState({
+    cancellation: '',
+    refund: '',
+  });
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
@@ -67,12 +71,16 @@ const BookingScreen = () => {
   const [couponsLoading, setCouponsLoading] = useState(false);
   const [booking, setBooking] = useState(false);
 
-  // Fetch GST from settings
+  // Fetch GST + policies from admin settings
   useEffect(() => {
     settingsAPI
       .getPublic()
       .then(res => {
         setGstPercent(res.data?.gst_percent ?? 5);
+        setAdminPolicies({
+          cancellation: res.data?.default_cancellation_policy || '',
+          refund: res.data?.default_refund_policy || '',
+        });
       })
       .catch(() => {});
   }, []);
@@ -705,7 +713,8 @@ const BookingScreen = () => {
               style={{ marginLeft: 8, fontSize: 13, color: '#374151', flex: 1 }}
             >
               {destination?.policies?.cancellationPolicy ||
-                'Free cancellation up to 7 days before departure'}
+                adminPolicies.cancellation ||
+                'Contact operator for details'}
             </Text>
           </View>
           <Text
@@ -730,8 +739,7 @@ const BookingScreen = () => {
             <Text
               style={{ marginLeft: 8, fontSize: 13, color: '#374151', flex: 1 }}
             >
-              Booking is confirmed once operator approves. No payment collected
-              now.
+              Booking is confirmed immediately. Secure payment.
             </Text>
           </View>
         </View>

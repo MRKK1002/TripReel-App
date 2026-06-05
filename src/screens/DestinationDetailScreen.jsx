@@ -98,18 +98,21 @@ const DestinationDetailScreen = () => {
   const images = rawImages.map(resolveUrl).filter(Boolean);
   const priceStr = `₹${destination.price?.toLocaleString('en-IN') ?? '12,999'}`;
 
-  // Dates come from real batches now
+  // Dates come from real batches now — compact format: "12-14 Feb 2026"
   const dates = batches.map((b, i) => {
     const start = new Date(b.startDate);
     const end = new Date(b.endDate);
-    const fmt = d =>
-      d.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
+    const startDay = start.getDate();
+    const endDay = end.getDate();
+    const startMonth = start.toLocaleDateString('en-IN', { month: 'short' });
+    const endMonth = end.toLocaleDateString('en-IN', { month: 'short' });
+    const year = end.getFullYear();
+    const label =
+      startMonth === endMonth
+        ? `${startDay}-${endDay} ${startMonth} ${year}`
+        : `${startDay} ${startMonth} - ${endDay} ${endMonth} ${year}`;
     return {
-      label: `${fmt(start)} - ${fmt(end)}`,
+      label,
       price: `₹${Number(b.adultPrice || destination.price || 0).toLocaleString(
         'en-IN',
       )}`,
@@ -485,9 +488,93 @@ const DestinationDetailScreen = () => {
               <Text
                 style={{ fontSize: 16, color: '#1E2A45', fontWeight: '500' }}
               >
-                {destination.duration}
+                {destination.duration ||
+                  `${destination.durationDays || 0} Days / ${
+                    destination.durationNights || 0
+                  } Nights`}
               </Text>
             </View>
+            {/* Transport — checkmark style matching design */}
+            {destination.transportDetails?.flightIncluded && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginBottom: 14,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 16, color: '#6B7280', marginRight: 10 }}
+                >
+                  ✓
+                </Text>
+                <Text
+                  style={{ fontSize: 16, color: '#1E2A45', fontWeight: '500' }}
+                >
+                  Flight included
+                </Text>
+              </View>
+            )}
+            {destination.transportDetails?.busIncluded && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginBottom: 14,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 16, color: '#6B7280', marginRight: 10 }}
+                >
+                  ✓
+                </Text>
+                <Text
+                  style={{ fontSize: 16, color: '#1E2A45', fontWeight: '500' }}
+                >
+                  Bus included
+                </Text>
+              </View>
+            )}
+            {destination.transportDetails?.cabIncluded && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginBottom: 14,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 16, color: '#6B7280', marginRight: 10 }}
+                >
+                  ✓
+                </Text>
+                <Text
+                  style={{ fontSize: 16, color: '#1E2A45', fontWeight: '500' }}
+                >
+                  Cab included
+                </Text>
+              </View>
+            )}
+            {destination.transportDetails?.pickupDrop ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginBottom: 14,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 16, color: '#6B7280', marginRight: 10 }}
+                >
+                  ✓
+                </Text>
+                <Text
+                  style={{ fontSize: 16, color: '#1E2A45', fontWeight: '500' }}
+                >
+                  {destination.transportDetails.pickupDrop}
+                </Text>
+              </View>
+            ) : null}
             {/* Highlights */}
             {(destination.highlights ?? [])
               .slice(0, showMoreHighlights ? undefined : 2)
@@ -566,11 +653,21 @@ const DestinationDetailScreen = () => {
             </Text>
             <Text style={{ fontSize: 13, color: '#6B7280', lineHeight: 20 }}>
               {showFullAbout
-                ? destination.about
-                : destination.about?.slice(0, 100) +
-                  (destination.about?.length > 100 ? '...' : '')}
+                ? destination.aboutThisTrip ||
+                  destination.about ||
+                  'No description available'
+                : (
+                    destination.aboutThisTrip ||
+                    destination.about ||
+                    'No description available'
+                  )?.slice(0, 100) +
+                  ((destination.aboutThisTrip || destination.about || '')
+                    ?.length > 100
+                    ? '...'
+                    : '')}
             </Text>
-            {destination.about?.length > 100 && (
+            {(destination.aboutThisTrip || destination.about || '').length >
+              100 && (
               <TouchableOpacity
                 onPress={() => setShowFullAbout(!showFullAbout)}
                 style={{ marginTop: 6 }}
@@ -757,44 +854,74 @@ const DestinationDetailScreen = () => {
                 </Text>
               </View>
             ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 10 }}
-              >
+              <View style={{ flexDirection: 'row', gap: 12 }}>
                 {dates.map((d, i) => (
                   <TouchableOpacity
                     key={i}
                     onPress={() => !d.isFull && setSelectedDate(i)}
                     style={{
-                      minWidth: 150,
+                      flex: 1,
                       borderWidth: 1.5,
                       borderColor: selectedDate === i ? '#1F8A70' : '#E5E7EB',
                       backgroundColor: d.isFull
                         ? '#F1F5F9'
                         : selectedDate === i
                         ? '#EBFFF8'
-                        : '#fff',
+                        : '#FFF5F5',
                       borderRadius: 10,
-                      padding: 10,
-                      alignItems: 'center',
+                      padding: 12,
                       opacity: d.isFull ? 0.6 : 1,
                     }}
                   >
-                    <Text
+                    <View
                       style={{
-                        fontSize: 12,
-                        color: '#6B7280',
-                        marginBottom: 4,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}
                     >
-                      {d.label}
-                    </Text>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: '#374151',
+                          fontWeight: '500',
+                        }}
+                      >
+                        {d.label}
+                      </Text>
+                      {/* Radio circle */}
+                      <View
+                        style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: 9,
+                          borderWidth: 2,
+                          borderColor:
+                            selectedDate === i ? '#1F8A70' : '#D1D5DB',
+                          backgroundColor:
+                            selectedDate === i ? '#1F8A70' : 'transparent',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {selectedDate === i && (
+                          <View
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: 3,
+                              backgroundColor: '#fff',
+                            }}
+                          />
+                        )}
+                      </View>
+                    </View>
                     <Text
                       style={{
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: '700',
                         color: d.isFull ? '#9CA3AF' : '#2563EB',
+                        marginTop: 6,
                       }}
                     >
                       {d.price}
@@ -824,7 +951,7 @@ const DestinationDetailScreen = () => {
                     ) : null}
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
             )}
           </View>
 

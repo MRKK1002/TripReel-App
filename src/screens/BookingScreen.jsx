@@ -1,854 +1,4 @@
-// import React, { useState } from 'react';
-// import {
-//   View,
-//   Text,
-//   ScrollView,
-//   TouchableOpacity,
-//   Image,
-//   StatusBar,
-//   Modal,
-// } from 'react-native';
-// import { SafeAreaView } from 'react-native-safe-area-context';
-// import { useNavigation, useRoute } from '@react-navigation/native';
-// import {
-//   ArrowLeft,
-//   ChevronRight,
-//   Star,
-//   Check,
-//   Camera,
-//   Calendar,
-//   Users,
-//   Wallet,
-//   Tag,
-// } from 'lucide-react-native';
-// import './../../android/app/src/utils/globalFont.js';
-
-// const F = 'Inter_28pt-Regular';
-
-// const BookingScreen = () => {
-//   const navigation = useNavigation();
-//   const route = useRoute();
-//   const { destination } = route.params;
-
-//   const [selectedAddon, setSelectedAddon] = useState(
-//     destination.addons?.[0]?.name ?? 'None',
-//   );
-//   const [selectedDate, setSelectedDate] = useState('10-11 Jan 2026');
-//   const [guests, setGuests] = useState({ adults: 2, infants: 1 });
-//   const [showAddonModal, setShowAddonModal] = useState(false);
-//   const [showDateModal, setShowDateModal] = useState(false);
-//   const [showGuestModal, setShowGuestModal] = useState(false);
-//   const [showPriceModal, setShowPriceModal] = useState(false);
-
-//   const addonPrice =
-//     destination.addons?.find(a => a.name === selectedAddon)?.price ?? 0;
-//   const totalPrice = destination.price + addonPrice;
-
-//   const dates = ['10-11 Jan 2026', '12-14 Feb 2026', '15-17 Mar 2026'];
-
-//   const guestLabel = `${guests.adults} adult${guests.adults > 1 ? 's' : ''}${
-//     guests.infants > 0 ? `, ${guests.infants} infant` : ''
-//   }`;
-
-//   const cardStyle = {
-//     backgroundColor: '#fff',
-//     borderRadius: 14,
-//     padding: 5,
-//     width:346,
-//     height:70,
-//     marginBottom: 10,
-//     shadowColor: '#000',
-//     shadowOffset: { width: 0, height: 1 },
-//     shadowOpacity: 0.06,
-//     shadowRadius: 6,
-//     elevation: 3,
-//   };
-
-//    const cardStyle2 = {
-//     backgroundColor: '#fff',
-//     borderRadius: 14,
-//     // padding: 14,
-//     marginBottom: 10,
-  
-//   };
-
-//      const cardStyle3 = {
-//     backgroundColor: '#fff',
-//     borderRadius: 14,
-//     // padding: 14,
-//     marginBottom: 10,
-  
-//   };
-
-//   return (
-//     <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
-//       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-
-//       {/* Header */}
-//       <View
-//         style={{
-//           flexDirection: 'row',
-//           alignItems: 'center',
-//           backgroundColor: '#fff',
-//           paddingHorizontal: 16,
-//           paddingVertical: 14,
-//           borderBottomWidth: 1,
-//           borderBottomColor: '#F3F4F6',
-//         }}
-//       >
-//         <TouchableOpacity onPress={() => navigation.goBack()}>
-//           <ArrowLeft size={22} color="#111827" />
-//         </TouchableOpacity>
-//         <Text
-//           style={{
-//             flex: 1,
-//             fontSize: 24,
-//             fontWeight: '700',
-//             color: '#111827',
-//             textAlign: 'center',
-//             fontFamily: F,
-//           }}
-//         >
-//           Confirm Booking
-//         </Text>
-//         {/* spacer to balance the back arrow */}
-//         <View style={{ width: 22 }} />
-//       </View>
-
-//       <ScrollView
-//         showsVerticalScrollIndicator={false}
-//         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-//       >
-//       <View style={{backgroundColor:"#F9FAFB", padding:10}}>
-//           {/* Destination Card */}
-//           <View style={cardStyle2}>
-//             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-//               <Image
-//                 source={{ uri: destination.image_url }}
-//                 style={{
-//                   width: 80,
-//                   height: 72,
-//                   borderRadius: 10,
-//                   marginRight: 12,
-//                 }}
-//                 resizeMode="cover"
-//               />
-//               <View style={{ flex: 1 }}>
-//                 <Text
-//                   style={{
-//                     fontSize: 16,
-//                     fontWeight: '700',
-//                     color: '#111827',
-//                     marginBottom: 6,
-//                     fontFamily: F,
-//                   }}
-//                 >
-//                   {destination.title}
-//                 </Text>
-//                 <View
-//                   style={{
-//                     backgroundColor: '#E6F4EF',
-//                     paddingHorizontal: 10,
-//                     paddingVertical: 3,
-//                     borderRadius: 6,
-//                     alignSelf: 'flex-start',
-//                     marginBottom: 8,
-//                   }}
-//                 >
-//                   <Text
-//                     style={{
-//                       fontSize: 11,
-//                       color: '#0F172A',
-//                       fontWeight: '600',
-//                       fontFamily: F,
-//                     }}
-//                   >
-//                     Guest Favorite
-//                   </Text>
-//                 </View>
-//                 <View
-//                   style={{
-//                     flexDirection: 'row',
-//                     alignItems: 'center',
-//                     flexWrap: 'wrap',
-//                   }}
-//                 >
-//                   <Star size={13} color="#4CAF50" fill="#4CAF50" />
-//                   <Text
-//                     style={{
-//                       fontSize: 13,
-//                       fontWeight: '700',
-//                       color: '#111827',
-//                       marginLeft: 3,
-//                       fontFamily: F,
-//                     }}
-//                   >
-//                     {destination.rating}
-//                   </Text>
-//                   <Text
-//                     style={{
-//                       fontSize: 13,
-//                       color: '#1F8A70',
-//                       marginLeft: 4,
-//                       textDecorationLine: 'underline',
-//                       fontFamily: F,
-//                     }}
-//                   >
-//                     {destination.reviews}
-//                   </Text>
-//                   <Text
-//                     style={{
-//                       fontSize: 13,
-//                       color: '#6B7280',
-//                       marginLeft: 4,
-//                       fontFamily: F,
-//                     }}
-//                   >
-//                     • {destination.priceLabel}
-//                   </Text>
-//                 </View>
-//               </View>
-//             </View>
-//           </View>
-  
-//           {/* Add-Ons Row */}
-//           <View style={cardStyle}>
-//             <BookingRow
-//               icon={<Camera size={18} color="#6B7280" />}
-//               label={selectedAddon}
-//               sublabel="Ad-Ons"
-//               onPress={() => setShowAddonModal(true)}
-//               btnLabel="Change"
-//               isLast
-//             />
-//           </View>
-  
-//           {/* Dates Row */}
-//           <View style={cardStyle}>
-//             <BookingRow
-//               icon={<Calendar size={18} color="#6B7280" />}
-//               label={selectedDate}
-//               sublabel="Dates"
-//               onPress={() => setShowDateModal(true)}
-//               btnLabel="Change"
-//               isLast
-//             />
-//           </View>
-  
-//           {/* Guests Row */}
-//           <View style={cardStyle}>
-//             <BookingRow
-//               icon={<Users size={18} color="#6B7280" />}
-//               label={guestLabel}
-//               sublabel="Guests"
-//               onPress={() => setShowGuestModal(true)}
-//               btnLabel="Change"
-//               isLast
-//             />
-//           </View>
-  
-//           {/* Total Price Row */}
-//           <View style={cardStyle}>
-//             <BookingRow
-//               icon={<Wallet size={18} color="#6B7280" />}
-//               label={`₹${totalPrice.toLocaleString('en-IN')}`}
-//               sublabel="Total Price"
-//               onPress={() => setShowPriceModal(true)}
-//               btnLabel="Details"
-//               isLast
-//             />
-//           </View>
-//       </View>
-
-//         {/* Apply Discounts */}
-//         <TouchableOpacity
-//           style={[cardStyle, { flexDirection: 'row', alignItems: 'center' }]}
-//         >
-//           <Tag size={18} color="#6B7280" style={{ marginRight: 12 }} />
-//           <View style={{ flex: 1 }}>
-//             <Text
-//               style={{
-//                 fontSize: 14,
-//                 fontWeight: '600',
-//                 color: '#111827',
-//                 fontFamily: F,
-//               }}
-//             >
-//               Apply Discounts
-//             </Text>
-//             <Text
-//               style={{
-//                 fontSize: 12,
-//                 color: '#9CA3AF',
-//                 marginTop: 2,
-//                 fontFamily: F,
-//               }}
-//             >
-//               Bank Offers & Coupons
-//             </Text>
-//           </View>
-//           <ChevronRight size={18} color="#9CA3AF" />
-//         </TouchableOpacity>
-
-//         {/* Policies */}
-//         <View style={cardStyle3}>
-//           <Text
-//             style={{
-//               fontSize: 18,
-//               fontWeight: '700',
-//               color: '#111827',
-//               marginBottom: 10,
-//               marginTop:10,
-//               fontFamily: F,
-//             }}
-//           >
-//             Cancellation Policy
-//           </Text>
-//           <PolicyRow text="Free cancellation up to 5 days before travel" />
-//           <PolicyRow text="No refund after that" />
-//           <Text
-//             style={{
-//               fontSize: 18,
-//               fontWeight: '700',
-//               color: '#111827',
-//               marginTop: 14,
-//               marginBottom: 10,
-//               fontFamily: F,
-//             }}
-//           >
-//             Payment Policy
-//           </Text>
-//           <PolicyRow text="Pay full amount during booking" />
-//           <PolicyRow text="Secure online payment" />
-//         </View>
-//       </ScrollView>
-
-//       {/* Continue to Pay */}
-//       <View
-//         style={{
-//           position: 'absolute',
-//           bottom: 0,
-//           left: 0,
-//           right: 0,
-//           backgroundColor: '#fff',
-//           padding: 16,
-//           paddingBottom: 28,
-//           borderTopWidth: 1,
-//           borderTopColor: '#F3F4F6',
-//         }}
-//       >
-//         <TouchableOpacity
-//           style={{
-//             backgroundColor: '#1F8A70',
-//             borderRadius: 14,
-//             paddingVertical: 16,
-//             alignItems: 'center',
-//           }}
-//           onPress={() =>
-//             navigation.navigate('BookingDetails', {
-//               destination,
-//               selectedDate,
-//               guests,
-//               selectedAddon,
-//             })
-//           }
-//         >
-//           <Text
-//             style={{
-//               color: '#fff',
-//               fontSize: 16,
-//               fontWeight: '700',
-//               fontFamily: F,
-//             }}
-//           >
-//             Continue to pay
-//           </Text>
-//         </TouchableOpacity>
-//       </View>
-
-//       {/* Addon Modal */}
-//       <PickerModal
-//         visible={showAddonModal}
-//         title="Select Add-On"
-//         options={['None', ...(destination.addons?.map(a => a.name) ?? [])]}
-//         selected={selectedAddon}
-//         onSelect={v => {
-//           setSelectedAddon(v);
-//           setShowAddonModal(false);
-//         }}
-//         onClose={() => setShowAddonModal(false)}
-//       />
-
-//       {/* Date Modal */}
-//       <PickerModal
-//         visible={showDateModal}
-//         title="Select Date"
-//         options={dates}
-//         selected={selectedDate}
-//         onSelect={v => {
-//           setSelectedDate(v);
-//           setShowDateModal(false);
-//         }}
-//         onClose={() => setShowDateModal(false)}
-//       />
-
-//       {/* Guest Modal */}
-//       <Modal visible={showGuestModal} transparent animationType="slide">
-//         <View
-//           style={{
-//             flex: 1,
-//             justifyContent: 'flex-end',
-//             backgroundColor: 'rgba(0,0,0,0.4)',
-//           }}
-//         >
-//           <View
-//             style={{
-//               backgroundColor: '#fff',
-//               borderTopLeftRadius: 20,
-//               borderTopRightRadius: 20,
-//               padding: 24,
-//             }}
-//           >
-//             <Text
-//               style={{
-//                 fontSize: 16,
-//                 fontWeight: '700',
-//                 color: '#111827',
-//                 marginBottom: 20,
-//                 fontFamily: F,
-//               }}
-//             >
-//               Select Guests
-//             </Text>
-//             <GuestCounter
-//               label="Adults"
-//               value={guests.adults}
-//               min={1}
-//               onChange={v => setGuests(g => ({ ...g, adults: v }))}
-//             />
-//             <GuestCounter
-//               label="Infants"
-//               value={guests.infants}
-//               min={0}
-//               onChange={v => setGuests(g => ({ ...g, infants: v }))}
-//             />
-//             <TouchableOpacity
-//               onPress={() => setShowGuestModal(false)}
-//               style={{
-//                 backgroundColor: '#1F8A70',
-//                 borderRadius: 12,
-//                 paddingVertical: 14,
-//                 alignItems: 'center',
-//                 marginTop: 20,
-//               }}
-//             >
-//               <Text
-//                 style={{
-//                   color: '#fff',
-//                   fontWeight: '700',
-//                   fontSize: 15,
-//                   fontFamily: F,
-//                 }}
-//               >
-//                 Done
-//               </Text>
-//             </TouchableOpacity>
-//           </View>
-//         </View>
-//       </Modal>
-
-//       {/* Price Details Modal */}
-//       <Modal visible={showPriceModal} transparent animationType="slide">
-//         <View
-//           style={{
-//             flex: 1,
-//             justifyContent: 'flex-end',
-//             backgroundColor: 'rgba(0,0,0,0.4)',
-//           }}
-//         >
-//           <View
-//             style={{
-//               backgroundColor: '#fff',
-//               borderTopLeftRadius: 20,
-//               borderTopRightRadius: 20,
-//               padding: 24,
-//             }}
-//           >
-//             <Text
-//               style={{
-//                 fontSize: 16,
-//                 fontWeight: '700',
-//                 color: '#111827',
-//                 marginBottom: 16,
-//                 fontFamily: F,
-//               }}
-//             >
-//               Price Details
-//             </Text>
-//             <PriceRow
-//               label="Base price"
-//               value={`₹${destination.price?.toLocaleString('en-IN')}`}
-//             />
-//             {addonPrice > 0 && (
-//               <PriceRow
-//                 label={selectedAddon}
-//                 value={`₹${addonPrice.toLocaleString('en-IN')}`}
-//               />
-//             )}
-//             <View
-//               style={{
-//                 height: 1,
-//                 backgroundColor: '#F3F4F6',
-//                 marginVertical: 12,
-//               }}
-//             />
-//             <PriceRow
-//               label="Total"
-//               value={`₹${totalPrice.toLocaleString('en-IN')}`}
-//               bold
-//             />
-//             <TouchableOpacity
-//               onPress={() => setShowPriceModal(false)}
-//               style={{
-//                 backgroundColor: '#1F8A70',
-//                 borderRadius: 12,
-//                 paddingVertical: 14,
-//                 alignItems: 'center',
-//                 marginTop: 20,
-//               }}
-//             >
-//               <Text
-//                 style={{
-//                   color: '#fff',
-//                   fontWeight: '700',
-//                   fontSize: 15,
-//                   fontFamily: F,
-//                 }}
-//               >
-//                 Close
-//               </Text>
-//             </TouchableOpacity>
-//           </View>
-//         </View>
-//       </Modal>
-//     </SafeAreaView>
-//   );
-// };
-
-// const BookingRow = ({ icon, label, sublabel, onPress, btnLabel, isLast }) => (
-//   <View
-//     style={{
-//       flexDirection: 'row',
-//       alignItems: 'center',
-//       paddingVertical: 12,
-//       borderBottomWidth: isLast ? 0 : 1,
-//       borderBottomColor: '#F3F4F6',
-//     }}
-//   >
-//     <View
-//       style={{
-//         width: 36,
-//         height: 36,
-//         borderRadius: 10,
-//         backgroundColor: '#F3F4F6',
-//         alignItems: 'center',
-//         justifyContent: 'center',
-//         marginRight: 12,
-//       }}
-//     >
-//       {icon}
-//     </View>
-//     <View style={{ flex: 1 }}>
-//       <Text
-//         style={{
-//           fontSize: 14,
-//           fontWeight: '600',
-//           color: '#111827',
-//           fontFamily: F,
-//         }}
-//       >
-//         {label}
-//       </Text>
-//       <Text
-//         style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2, fontFamily: F }}
-//       >
-//         {sublabel}
-//       </Text>
-//     </View>
-//     <TouchableOpacity
-//       onPress={onPress}
-//       style={{
-//         backgroundColor: '#E6F4EF',
-//         paddingHorizontal: 16,
-//         paddingVertical: 7,
-//         borderRadius: 8,
-//       }}
-//     >
-//       <Text
-//         style={{
-//           fontSize: 13,
-//           fontWeight: '600',
-//           color: '#374151',
-//           fontFamily: F,
-//         }}
-//       >
-//         {btnLabel}
-//       </Text>
-//     </TouchableOpacity>
-//   </View>
-// );
-
-// const PolicyRow = ({ text }) => (
-//   <View
-//     style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}
-//   >
-//     <Check size={14} color="#1F8A70" style={{ marginTop: 2 }} />
-//     <Text
-//       style={{
-//         marginLeft: 10,
-//         fontSize: 13,
-//         color: '#374151',
-//         flex: 1,
-//         fontFamily: F,
-//       }}
-//     >
-//       {text}
-//     </Text>
-//   </View>
-// );
-
-// const PickerModal = ({
-//   visible,
-//   title,
-//   options,
-//   selected,
-//   onSelect,
-//   onClose,
-// }) => (
-//   <Modal visible={visible} transparent animationType="slide">
-//     <View
-//       style={{
-//         flex: 1,
-//         justifyContent: 'flex-end',
-//         backgroundColor: 'rgba(0,0,0,0.4)',
-//       }}
-//     >
-//       <View
-//         style={{
-//           backgroundColor: '#fff',
-//           borderTopLeftRadius: 20,
-//           borderTopRightRadius: 20,
-//           padding: 24,
-//         }}
-//       >
-//         <Text
-//           style={{
-//             fontSize: 16,
-//             fontWeight: '700',
-//             color: '#111827',
-//             marginBottom: 16,
-//             fontFamily: F,
-//           }}
-//         >
-//           {title}
-//         </Text>
-//         {options.map(opt => (
-//           <TouchableOpacity
-//             key={opt}
-//             onPress={() => onSelect(opt)}
-//             style={{
-//               flexDirection: 'row',
-//               alignItems: 'center',
-//               paddingVertical: 14,
-//               borderBottomWidth: 1,
-//               borderBottomColor: '#F3F4F6',
-//             }}
-//           >
-//             <View
-//               style={{
-//                 width: 20,
-//                 height: 20,
-//                 borderRadius: 10,
-//                 borderWidth: 2,
-//                 borderColor: selected === opt ? '#1F8A70' : '#D1D5DB',
-//                 backgroundColor: selected === opt ? '#1F8A70' : '#fff',
-//                 marginRight: 12,
-//               }}
-//             />
-//             <Text style={{ fontSize: 14, color: '#111827', fontFamily: F }}>
-//               {opt}
-//             </Text>
-//           </TouchableOpacity>
-//         ))}
-//         <TouchableOpacity
-//           onPress={onClose}
-//           style={{ marginTop: 16, alignItems: 'center' }}
-//         >
-//           <Text style={{ color: '#6B7280', fontSize: 14, fontFamily: F }}>
-//             Cancel
-//           </Text>
-//         </TouchableOpacity>
-//       </View>
-//     </View>
-//   </Modal>
-// );
-
-// const GuestCounter = ({ label, value, min, onChange }) => (
-//   <View
-//     style={{
-//       flexDirection: 'row',
-//       alignItems: 'center',
-//       justifyContent: 'space-between',
-//       marginBottom: 16,
-//     }}
-//   >
-//     <Text
-//       style={{
-//         fontSize: 14,
-//         color: '#111827',
-//         fontWeight: '600',
-//         fontFamily: F,
-//       }}
-//     >
-//       {label}
-//     </Text>
-//     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-//       <TouchableOpacity
-//         onPress={() => onChange(Math.max(min, value - 1))}
-//         style={{
-//           width: 32,
-//           height: 32,
-//           borderRadius: 16,
-//           borderWidth: 1.5,
-//           borderColor: '#D1D5DB',
-//           alignItems: 'center',
-//           justifyContent: 'center',
-//         }}
-//       >
-//         <Text
-//           style={{
-//             fontSize: 18,
-//             color: '#374151',
-//             lineHeight: 22,
-//             fontFamily: F,
-//           }}
-//         >
-//           −
-//         </Text>
-//       </TouchableOpacity>
-//       <Text
-//         style={{
-//           fontSize: 16,
-//           fontWeight: '700',
-//           color: '#111827',
-//           minWidth: 20,
-//           textAlign: 'center',
-//           fontFamily: F,
-//         }}
-//       >
-//         {value}
-//       </Text>
-//       <TouchableOpacity
-//         onPress={() => onChange(value + 1)}
-//         style={{
-//           width: 32,
-//           height: 32,
-//           borderRadius: 16,
-//           backgroundColor: '#1F8A70',
-//           alignItems: 'center',
-//           justifyContent: 'center',
-//         }}
-//       >
-//         <Text
-//           style={{ fontSize: 18, color: '#fff', lineHeight: 22, fontFamily: F }}
-//         >
-//           +
-//         </Text>
-//       </TouchableOpacity>
-//     </View>
-//   </View>
-// );
-
-// const PriceRow = ({ label, value, bold }) => (
-//   <View
-//     style={{
-//       flexDirection: 'row',
-//       justifyContent: 'space-between',
-//       marginBottom: 8,
-//     }}
-//   >
-//     <Text
-//       style={{
-//         fontSize: 14,
-//         color: bold ? '#111827' : '#6B7280',
-//         fontWeight: bold ? '700' : '400',
-//         fontFamily: F,
-//       }}
-//     >
-//       {label}
-//     </Text>
-//     <Text
-//       style={{
-//         fontSize: 14,
-//         color: '#111827',
-//         fontWeight: bold ? '700' : '600',
-//         fontFamily: F,
-//       }}
-//     >
-//       {value}
-//     </Text>
-//   </View>
-// );
-
-// export default BookingScreen;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -857,6 +7,9 @@ import {
   Image,
   StatusBar,
   Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -865,65 +18,155 @@ import {
   ChevronRight,
   Star,
   Check,
-  Camera,
   Calendar,
   Users,
   Wallet,
   Tag,
+  MapPin,
 } from 'lucide-react-native';
+import { tripBookingsAPI, settingsAPI, SERVER_URL } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import './../../android/app/src/utils/globalFont.js';
 
-const F = 'Inter_28pt-Regular';
+const resolveUrl = url => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  return `${SERVER_URL}${url.startsWith('/') ? url : '/' + url}`;
+};
 
 const BookingScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { destination } = route.params;
+  const { user } = useAuth();
+  const { destination, selectedBatch, batchId } = route.params || {};
 
-  const [selectedAddon, setSelectedAddon] = useState(
-    destination.addons?.[0]?.name ?? 'None',
-  );
-  const [selectedDate, setSelectedDate] = useState('10-11 Jan 2026');
-  const [guests, setGuests] = useState({ adults: 2, infants: 1 });
-  const [showAddonModal, setShowAddonModal] = useState(false);
-  const [showDateModal, setShowDateModal] = useState(false);
-  const [showGuestModal, setShowGuestModal] = useState(false);
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
+  const [couponCode, setCouponCode] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [gstPercent, setGstPercent] = useState(5);
   const [showPriceModal, setShowPriceModal] = useState(false);
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [booking, setBooking] = useState(false);
 
-  const addonPrice =
-    destination.addons?.find(a => a.name === selectedAddon)?.price ?? 0;
-  const totalPrice = destination.price + addonPrice;
+  // Fetch GST from settings
+  useEffect(() => {
+    settingsAPI
+      .getPublic()
+      .then(res => {
+        setGstPercent(res.data?.gst_percent ?? 5);
+      })
+      .catch(() => {});
+  }, []);
 
-  const dates = ['10-11 Jan 2026', '12-14 Feb 2026', '15-17 Mar 2026'];
+  // ── Pricing calculations ───────────────────────────────────────────────────
+  const adultPrice = selectedBatch?.adultPrice || destination?.price || 0;
+  const childPrice = selectedBatch?.childPrice || 0;
+  const totalSeats = adults + children;
 
-  const guestLabel = `${guests.adults} adult${guests.adults > 1 ? 's' : ''}${
-    guests.infants > 0 ? `, ${guests.infants} infant` : ''
+  const adultSubtotal = adultPrice * adults;
+  const childSubtotal = childPrice * children;
+  const subtotal = adultSubtotal + childSubtotal;
+  const gstAmount = Math.round((subtotal * gstPercent) / 100);
+  const discountAmount =
+    discount > 0 ? Math.round((subtotal * discount) / 100) : 0;
+  const totalAmount = subtotal + gstAmount - discountAmount;
+
+  const seatsLeft = selectedBatch
+    ? (selectedBatch.totalSeats || 0) - (selectedBatch.bookedSeats || 0)
+    : 99;
+
+  // ── Apply coupon ───────────────────────────────────────────────────────────
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim()) return;
+    // Check against package offer coupon
+    const pkgCoupon = destination?.offer?.couponCode || '';
+    if (
+      pkgCoupon &&
+      couponCode.trim().toUpperCase() === pkgCoupon.toUpperCase()
+    ) {
+      // Give 10% discount (or you can make this dynamic from offer)
+      setDiscount(10);
+      setCouponApplied(true);
+      Alert.alert('Coupon Applied!', '10% discount applied to your booking.');
+    } else {
+      Alert.alert(
+        'Invalid Coupon',
+        'This coupon code is not valid for this package.',
+      );
+    }
+  };
+
+  const removeCoupon = () => {
+    setDiscount(0);
+    setCouponApplied(false);
+    setCouponCode('');
+  };
+
+  // ── Confirm booking ────────────────────────────────────────────────────────
+  const handleConfirmBooking = async () => {
+    if (!batchId) {
+      Alert.alert(
+        'No Batch Selected',
+        'Please go back and select a departure date.',
+      );
+      return;
+    }
+    if (totalSeats > seatsLeft) {
+      Alert.alert('Not Enough Seats', `Only ${seatsLeft} seats available.`);
+      return;
+    }
+
+    setBooking(true);
+    try {
+      await tripBookingsAPI.create({
+        packageId: destination._id,
+        batchId,
+        seats: totalSeats,
+        travelerNames: [user?.name || ''],
+      });
+      Alert.alert(
+        'Booking Confirmed! ✓',
+        'Your booking is pending operator confirmation. Check "My Trips" for updates.',
+        [
+          {
+            text: 'Go to My Trips',
+            onPress: () => navigation.navigate('Main', { screen: 'MyTrip' }),
+          },
+        ],
+      );
+    } catch (err) {
+      Alert.alert(
+        'Booking Failed',
+        err?.response?.data?.message || 'Please try again.',
+      );
+    } finally {
+      setBooking(false);
+    }
+  };
+
+  // ── Date display ───────────────────────────────────────────────────────────
+  const fmt = d => {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+  const dateLabel = selectedBatch
+    ? `${fmt(selectedBatch.startDate)} - ${fmt(selectedBatch.endDate)}`
+    : 'No date selected';
+
+  const guestLabel = `${adults} adult${adults > 1 ? 's' : ''}${
+    children > 0 ? `, ${children} child${children > 1 ? 'ren' : ''}` : ''
   }`;
 
-  const cardStyle = {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
-  };
-
-  const cardStyle2 = {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    marginBottom: 10,
-  };
-
-  const cardStyle3 = {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    marginBottom: 10,
-  };
+  const imageUrl =
+    resolveUrl(destination?.image_url) ||
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=200&h=150&fit=crop';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
@@ -947,240 +190,359 @@ const BookingScreen = () => {
         <Text
           style={{
             flex: 1,
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: '700',
             color: '#111827',
             textAlign: 'center',
-            fontFamily: F,
           }}
         >
           Confirm Booking
         </Text>
-        {/* spacer to balance the back arrow */}
         <View style={{ width: 22 }} />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
       >
-        <View style={{ backgroundColor: "#F9FAFB" }}>
-          {/* Destination Card */}
-          <View style={cardStyle2}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Image
-                source={{ uri: destination.image_url }}
-                style={{
-                  width: 80,
-                  height: 72,
-                  borderRadius: 10,
-                  marginRight: 12,
-                }}
-                resizeMode="cover"
-              />
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: '700',
-                    color: '#111827',
-                    marginBottom: 6,
-                    fontFamily: F,
-                  }}
-                >
-                  {destination.title}
-                </Text>
-                <View
-                  style={{
-                    backgroundColor: '#E6F4EF',
-                    paddingHorizontal: 10,
-                    paddingVertical: 3,
-                    borderRadius: 6,
-                    alignSelf: 'flex-start',
-                    marginBottom: 8,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: '#0F172A',
-                      fontWeight: '600',
-                      fontFamily: F,
-                    }}
-                  >
-                    Guest Favorite
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <Star size={13} color="#4CAF50" fill="#4CAF50" />
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: '700',
-                      color: '#111827',
-                      marginLeft: 3,
-                      fontFamily: F,
-                    }}
-                  >
-                    {destination.rating}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: '#1F8A70',
-                      marginLeft: 4,
-                      textDecorationLine: 'underline',
-                      fontFamily: F,
-                    }}
-                  >
-                    {destination.reviews}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: '#6B7280',
-                      marginLeft: 4,
-                      fontFamily: F,
-                    }}
-                  >
-                    • {destination.priceLabel}
-                  </Text>
-                </View>
-              </View>
+        {/* Package card */}
+        <View
+          style={{
+            backgroundColor: '#fff',
+            borderRadius: 14,
+            padding: 12,
+            marginBottom: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <Image
+            source={{ uri: imageUrl }}
+            style={{ width: 72, height: 64, borderRadius: 10, marginRight: 12 }}
+            resizeMode="cover"
+          />
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}
+              numberOfLines={1}
+            >
+              {destination?.title || 'Package'}
+            </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginTop: 4,
+              }}
+            >
+              <MapPin size={12} color="#9CA3AF" />
+              <Text
+                style={{ fontSize: 12, color: '#6B7280', marginLeft: 4 }}
+                numberOfLines={1}
+              >
+                {destination?.location || ''}
+              </Text>
             </View>
-          </View>
-
-          {/* Add-Ons Row */}
-          <View style={cardStyle}>
-            <BookingRow
-              icon={<Camera size={18} color="#6B7280" />}
-              label={selectedAddon}
-              sublabel="Ad-Ons"
-              onPress={() => setShowAddonModal(true)}
-              btnLabel="Change"
-              isLast={false}
-            />
-          </View>
-
-          {/* Dates Row */}
-          <View style={cardStyle}>
-            <BookingRow
-              icon={<Calendar size={18} color="#6B7280" />}
-              label={selectedDate}
-              sublabel="Dates"
-              onPress={() => setShowDateModal(true)}
-              btnLabel="Change"
-              isLast={false}
-            />
-          </View>
-
-          {/* Guests Row */}
-          <View style={cardStyle}>
-            <BookingRow
-              icon={<Users size={18} color="#6B7280" />}
-              label={guestLabel}
-              sublabel="Guests"
-              onPress={() => setShowGuestModal(true)}
-              btnLabel="Change"
-              isLast={false}
-            />
-          </View>
-
-          {/* Total Price Row */}
-          <View style={cardStyle}>
-            <BookingRow
-              icon={<Wallet size={18} color="#6B7280" />}
-              label={`₹${totalPrice.toLocaleString('en-IN')}`}
-              sublabel="Total Price"
-              onPress={() => setShowPriceModal(true)}
-              btnLabel="Details"
-              isLast={true}
-            />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginTop: 4,
+              }}
+            >
+              <Star size={12} color="#4CAF50" fill="#4CAF50" />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '600',
+                  color: '#111827',
+                  marginLeft: 3,
+                }}
+              >
+                {destination?.avgRating || destination?.rating || 4.5}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>
+                • {destination?.reviewCount || 0} reviews
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Apply Discounts */}
+        {/* Dates */}
+        <View style={cardStyle}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={iconBox}>
+              <Calendar size={18} color="#6B7280" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}
+              >
+                {dateLabel}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                Travel Dates
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Guests — tappable */}
         <TouchableOpacity
-          style={[cardStyle, { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }]}
+          style={cardStyle}
+          onPress={() => setShowGuestModal(true)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={iconBox}>
+              <Users size={18} color="#6B7280" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}
+              >
+                {guestLabel}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                Guests
+              </Text>
+            </View>
+            <View
+              style={{
+                backgroundColor: '#E6F4EF',
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderRadius: 8,
+              }}
+            >
+              <Text
+                style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}
+              >
+                Change
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Price summary — tappable */}
+        <TouchableOpacity
+          style={cardStyle}
+          onPress={() => setShowPriceModal(true)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={iconBox}>
+              <Wallet size={18} color="#6B7280" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}
+              >
+                ₹{totalAmount.toLocaleString('en-IN')}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                Total Price (incl. GST)
+              </Text>
+            </View>
+            <View
+              style={{
+                backgroundColor: '#E6F4EF',
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderRadius: 8,
+              }}
+            >
+              <Text
+                style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}
+              >
+                Details
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Seats warning */}
+        {seatsLeft <= 10 && seatsLeft > 0 && (
+          <View
+            style={{
+              backgroundColor: '#FEF3C7',
+              borderRadius: 10,
+              padding: 10,
+              marginBottom: 12,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 12,
+                color: '#92400E',
+                fontWeight: '600',
+                textAlign: 'center',
+              }}
+            >
+              ⚡ Only {seatsLeft} seats left for this batch!
+            </Text>
+          </View>
+        )}
+
+        {/* Apply Discount */}
+        <View
+          style={{
+            backgroundColor: '#fff',
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 12,
+          }}
         >
           <View
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              backgroundColor: '#F3F4F6',
+              flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
+              marginBottom: 10,
             }}
           >
-            <Tag size={18} color="#6B7280" />
-          </View>
-          <View style={{ flex: 1 }}>
+            <Tag size={16} color="#6B7280" />
             <Text
               style={{
                 fontSize: 14,
                 fontWeight: '600',
                 color: '#111827',
-                fontFamily: F,
+                marginLeft: 8,
               }}
             >
-              Apply Discounts
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                color: '#9CA3AF',
-                marginTop: 2,
-                fontFamily: F,
-              }}
-            >
-              Bank Offers & Coupons
+              Apply Discount
             </Text>
           </View>
-          <ChevronRight size={18} color="#9CA3AF" />
-        </TouchableOpacity>
+          {couponApplied ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#D1FAE5',
+                borderRadius: 8,
+                padding: 10,
+              }}
+            >
+              <Check size={14} color="#10B981" />
+              <Text
+                style={{
+                  flex: 1,
+                  marginLeft: 8,
+                  fontSize: 13,
+                  color: '#065F46',
+                  fontWeight: '600',
+                }}
+              >
+                {couponCode.toUpperCase()} — {discount}% off applied
+              </Text>
+              <TouchableOpacity onPress={removeCoupon}>
+                <Text
+                  style={{ fontSize: 12, color: '#EF4444', fontWeight: '600' }}
+                >
+                  Remove
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TextInput
+                value={couponCode}
+                onChangeText={setCouponCode}
+                placeholder="Enter coupon code"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="characters"
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  fontSize: 14,
+                  color: '#111827',
+                  backgroundColor: '#F9FAFB',
+                }}
+              />
+              <TouchableOpacity
+                onPress={handleApplyCoupon}
+                style={{
+                  backgroundColor: '#1F8A70',
+                  borderRadius: 10,
+                  paddingHorizontal: 16,
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}
+                >
+                  Apply
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         {/* Policies */}
-        <View style={cardStyle3}>
+        <View
+          style={{
+            backgroundColor: '#fff',
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 12,
+          }}
+        >
           <Text
             style={{
-              fontSize: 18,
+              fontSize: 15,
               fontWeight: '700',
               color: '#111827',
               marginBottom: 10,
-              marginTop: 10,
-              fontFamily: F,
             }}
           >
             Cancellation Policy
           </Text>
-          <PolicyRow text="Free cancellation up to 5 days before travel" />
-          <PolicyRow text="No refund after that" />
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              marginBottom: 6,
+            }}
+          >
+            <Check size={14} color="#1F8A70" style={{ marginTop: 2 }} />
+            <Text
+              style={{ marginLeft: 8, fontSize: 13, color: '#374151', flex: 1 }}
+            >
+              {destination?.policies?.cancellationPolicy ||
+                'Free cancellation up to 7 days before departure'}
+            </Text>
+          </View>
           <Text
             style={{
-              fontSize: 18,
+              fontSize: 15,
               fontWeight: '700',
               color: '#111827',
-              marginTop: 14,
+              marginTop: 12,
               marginBottom: 10,
-              fontFamily: F,
             }}
           >
             Payment Policy
           </Text>
-          <PolicyRow text="Pay full amount during booking" />
-          <PolicyRow text="Secure online payment" />
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              marginBottom: 6,
+            }}
+          >
+            <Check size={14} color="#1F8A70" style={{ marginTop: 2 }} />
+            <Text
+              style={{ marginLeft: 8, fontSize: 13, color: '#374151', flex: 1 }}
+            >
+              Booking is confirmed once operator approves. No payment collected
+              now.
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
-      {/* Continue to Pay */}
+      {/* Bottom CTA */}
       <View
         style={{
           position: 'absolute',
@@ -1195,61 +557,29 @@ const BookingScreen = () => {
         }}
       >
         <TouchableOpacity
+          onPress={handleConfirmBooking}
+          disabled={booking}
           style={{
-            backgroundColor: '#1F8A70',
+            backgroundColor: booking ? '#94A3B8' : '#1F8A70',
             borderRadius: 14,
             paddingVertical: 16,
             alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            gap: 8,
           }}
-          onPress={() =>
-            navigation.navigate('BookingDetails', {
-              destination,
-              selectedDate,
-              guests,
-              selectedAddon,
-            })
-          }
         >
-          <Text
-            style={{
-              color: '#fff',
-              fontSize: 16,
-              fontWeight: '700',
-              fontFamily: F,
-            }}
-          >
-            Continue to pay
-          </Text>
+          {booking ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+              Confirm Booking — ₹{totalAmount.toLocaleString('en-IN')}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* Addon Modal */}
-      <PickerModal
-        visible={showAddonModal}
-        title="Select Add-On"
-        options={['None', ...(destination.addons?.map(a => a.name) ?? [])]}
-        selected={selectedAddon}
-        onSelect={v => {
-          setSelectedAddon(v);
-          setShowAddonModal(false);
-        }}
-        onClose={() => setShowAddonModal(false)}
-      />
-
-      {/* Date Modal */}
-      <PickerModal
-        visible={showDateModal}
-        title="Select Date"
-        options={dates}
-        selected={selectedDate}
-        onSelect={v => {
-          setSelectedDate(v);
-          setShowDateModal(false);
-        }}
-        onClose={() => setShowDateModal(false)}
-      />
-
-      {/* Guest Modal */}
+      {/* ── Guest Modal ──────────────────────────────────────────────────────── */}
       <Modal visible={showGuestModal} transparent animationType="slide">
         <View
           style={{
@@ -1272,22 +602,29 @@ const BookingScreen = () => {
                 fontWeight: '700',
                 color: '#111827',
                 marginBottom: 20,
-                fontFamily: F,
               }}
             >
               Select Guests
             </Text>
             <GuestCounter
               label="Adults"
-              value={guests.adults}
+              sublabel={`₹${adultPrice.toLocaleString('en-IN')}/person`}
+              value={adults}
               min={1}
-              onChange={v => setGuests(g => ({ ...g, adults: v }))}
+              max={seatsLeft}
+              onChange={setAdults}
             />
             <GuestCounter
-              label="Infants"
-              value={guests.infants}
+              label="Children"
+              sublabel={
+                childPrice > 0
+                  ? `₹${childPrice.toLocaleString('en-IN')}/person`
+                  : 'Free'
+              }
+              value={children}
               min={0}
-              onChange={v => setGuests(g => ({ ...g, infants: v }))}
+              max={Math.max(0, seatsLeft - adults)}
+              onChange={setChildren}
             />
             <TouchableOpacity
               onPress={() => setShowGuestModal(false)}
@@ -1299,14 +636,7 @@ const BookingScreen = () => {
                 marginTop: 20,
               }}
             >
-              <Text
-                style={{
-                  color: '#fff',
-                  fontWeight: '700',
-                  fontSize: 15,
-                  fontFamily: F,
-                }}
-              >
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
                 Done
               </Text>
             </TouchableOpacity>
@@ -1314,7 +644,7 @@ const BookingScreen = () => {
         </View>
       </Modal>
 
-      {/* Price Details Modal */}
+      {/* ── Price Details Modal ───────────────────────────────────────────────── */}
       <Modal visible={showPriceModal} transparent animationType="slide">
         <View
           style={{
@@ -1337,19 +667,33 @@ const BookingScreen = () => {
                 fontWeight: '700',
                 color: '#111827',
                 marginBottom: 16,
-                fontFamily: F,
               }}
             >
-              Price Details
+              Price Breakdown
             </Text>
             <PriceRow
-              label="Base price"
-              value={`₹${destination.price?.toLocaleString('en-IN')}`}
+              label={`Adults (${adults} × ₹${adultPrice.toLocaleString(
+                'en-IN',
+              )})`}
+              value={`₹${adultSubtotal.toLocaleString('en-IN')}`}
             />
-            {addonPrice > 0 && (
+            {children > 0 && (
               <PriceRow
-                label={selectedAddon}
-                value={`₹${addonPrice.toLocaleString('en-IN')}`}
+                label={`Children (${children} × ₹${childPrice.toLocaleString(
+                  'en-IN',
+                )})`}
+                value={`₹${childSubtotal.toLocaleString('en-IN')}`}
+              />
+            )}
+            <PriceRow
+              label={`GST (${gstPercent}%)`}
+              value={`₹${gstAmount.toLocaleString('en-IN')}`}
+            />
+            {discountAmount > 0 && (
+              <PriceRow
+                label={`Discount (${discount}%)`}
+                value={`-₹${discountAmount.toLocaleString('en-IN')}`}
+                green
               />
             )}
             <View
@@ -1360,8 +704,8 @@ const BookingScreen = () => {
               }}
             />
             <PriceRow
-              label="Total"
-              value={`₹${totalPrice.toLocaleString('en-IN')}`}
+              label="Total Amount"
+              value={`₹${totalAmount.toLocaleString('en-IN')}`}
               bold
             />
             <TouchableOpacity
@@ -1374,14 +718,7 @@ const BookingScreen = () => {
                 marginTop: 20,
               }}
             >
-              <Text
-                style={{
-                  color: '#fff',
-                  fontWeight: '700',
-                  fontSize: 15,
-                  fontFamily: F,
-                }}
-              >
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
                 Close
               </Text>
             </TouchableOpacity>
@@ -1392,165 +729,24 @@ const BookingScreen = () => {
   );
 };
 
-const BookingRow = ({ icon, label, sublabel, onPress, btnLabel, isLast }) => (
-  <View
-    style={{
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 12,
-      borderBottomWidth: isLast ? 0 : 1,
-      borderBottomColor: '#fff',
-    }}
-  >
-    <View
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: '#F3F4F6',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-      }}
-    >
-      {icon}
-    </View>
-    <View style={{ flex: 1 }}>
-      <Text
-        style={{
-          fontSize: 14,
-          fontWeight: '600',
-          color: '#111827',
-          fontFamily: F,
-        }}
-      >
-        {label}
-      </Text>
-      <Text
-        style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2, fontFamily: F }}
-      >
-        {sublabel}
-      </Text>
-    </View>
-    <TouchableOpacity
-      onPress={onPress}
-      style={{
-        backgroundColor: '#E6F4EF',
-        paddingHorizontal: 16,
-        paddingVertical: 7,
-        borderRadius: 8,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: '600',
-          color: '#374151',
-          fontFamily: F,
-        }}
-      >
-        {btnLabel}
-      </Text>
-    </TouchableOpacity>
-  </View>
-);
+// ── Reusable components ────────────────────────────────────────────────────────
+const cardStyle = {
+  backgroundColor: '#fff',
+  borderRadius: 14,
+  padding: 14,
+  marginBottom: 12,
+};
+const iconBox = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  backgroundColor: '#F3F4F6',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginRight: 12,
+};
 
-const PolicyRow = ({ text }) => (
-  <View
-    style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}
-  >
-    <Check size={14} color="#1F8A70" style={{ marginTop: 2 }} />
-    <Text
-      style={{
-        marginLeft: 10,
-        fontSize: 13,
-        color: '#374151',
-        flex: 1,
-        fontFamily: F,
-      }}
-    >
-      {text}
-    </Text>
-  </View>
-);
-
-const PickerModal = ({
-  visible,
-  title,
-  options,
-  selected,
-  onSelect,
-  onClose,
-}) => (
-  <Modal visible={visible} transparent animationType="slide">
-    <View
-      style={{
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.4)',
-      }}
-    >
-      <View
-        style={{
-          backgroundColor: '#fff',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          padding: 24,
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 16,
-            fontWeight: '700',
-            color: '#111827',
-            marginBottom: 16,
-            fontFamily: F,
-          }}
-        >
-          {title}
-        </Text>
-        {options.map(opt => (
-          <TouchableOpacity
-            key={opt}
-            onPress={() => onSelect(opt)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 14,
-              borderBottomWidth: 1,
-              borderBottomColor: '#F3F4F6',
-            }}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor: selected === opt ? '#1F8A70' : '#D1D5DB',
-                backgroundColor: selected === opt ? '#1F8A70' : '#fff',
-                marginRight: 12,
-              }}
-            />
-            <Text style={{ fontSize: 14, color: '#111827', fontFamily: F }}>
-              {opt}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity
-          onPress={onClose}
-          style={{ marginTop: 16, alignItems: 'center' }}
-        >
-          <Text style={{ color: '#6B7280', fontSize: 14, fontFamily: F }}>
-            Cancel
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </Modal>
-);
-
-const GuestCounter = ({ label, value, min, onChange }) => (
+const GuestCounter = ({ label, sublabel, value, min, max, onChange }) => (
   <View
     style={{
       flexDirection: 'row',
@@ -1559,16 +755,14 @@ const GuestCounter = ({ label, value, min, onChange }) => (
       marginBottom: 16,
     }}
   >
-    <Text
-      style={{
-        fontSize: 14,
-        color: '#111827',
-        fontWeight: '600',
-        fontFamily: F,
-      }}
-    >
-      {label}
-    </Text>
+    <View>
+      <Text style={{ fontSize: 14, color: '#111827', fontWeight: '600' }}>
+        {label}
+      </Text>
+      <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+        {sublabel}
+      </Text>
+    </View>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
       <TouchableOpacity
         onPress={() => onChange(Math.max(min, value - 1))}
@@ -1582,14 +776,7 @@ const GuestCounter = ({ label, value, min, onChange }) => (
           justifyContent: 'center',
         }}
       >
-        <Text
-          style={{
-            fontSize: 18,
-            color: '#374151',
-            lineHeight: 22,
-            fontFamily: F,
-          }}
-        >
+        <Text style={{ fontSize: 18, color: '#374151', lineHeight: 22 }}>
           −
         </Text>
       </TouchableOpacity>
@@ -1600,13 +787,12 @@ const GuestCounter = ({ label, value, min, onChange }) => (
           color: '#111827',
           minWidth: 20,
           textAlign: 'center',
-          fontFamily: F,
         }}
       >
         {value}
       </Text>
       <TouchableOpacity
-        onPress={() => onChange(value + 1)}
+        onPress={() => onChange(Math.min(max, value + 1))}
         style={{
           width: 32,
           height: 32,
@@ -1616,17 +802,13 @@ const GuestCounter = ({ label, value, min, onChange }) => (
           justifyContent: 'center',
         }}
       >
-        <Text
-          style={{ fontSize: 18, color: '#fff', lineHeight: 22, fontFamily: F }}
-        >
-          +
-        </Text>
+        <Text style={{ fontSize: 18, color: '#fff', lineHeight: 22 }}>+</Text>
       </TouchableOpacity>
     </View>
   </View>
 );
 
-const PriceRow = ({ label, value, bold }) => (
+const PriceRow = ({ label, value, bold, green }) => (
   <View
     style={{
       flexDirection: 'row',
@@ -1639,7 +821,6 @@ const PriceRow = ({ label, value, bold }) => (
         fontSize: 14,
         color: bold ? '#111827' : '#6B7280',
         fontWeight: bold ? '700' : '400',
-        fontFamily: F,
       }}
     >
       {label}
@@ -1647,9 +828,8 @@ const PriceRow = ({ label, value, bold }) => (
     <Text
       style={{
         fontSize: 14,
-        color: '#111827',
+        color: green ? '#10B981' : '#111827',
         fontWeight: bold ? '700' : '600',
-        fontFamily: F,
       }}
     >
       {value}

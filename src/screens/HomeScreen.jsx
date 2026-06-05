@@ -131,7 +131,7 @@ const PackageCard = ({ item, onPress, onWishlist, inWishlist }) => {
         <Star size={12} color="#F59E0B" fill="#F59E0B" />
         <Text style={styles.cardMeta}>
           {' '}
-          {item.avgRating || item.rating || 4.5}
+          {item.avgRating || item.rating || "New"}
         </Text>
         {priceText ? <Text style={styles.cardMeta}> · </Text> : null}
         {priceText ? (
@@ -198,7 +198,7 @@ const RecentCard = ({ item, onPress }) => {
       >
         <Star size={11} color="#4CAF50" fill="#4CAF50" />
         <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>
-          {item.rating || 4.5}
+          {item.avgRating || item.rating || "New"}
         </Text>
         <Text style={{ fontSize: 12, color: '#CBD5E1' }}>·</Text>
         <Text style={{ fontSize: 12, color: '#94A3B8' }}>
@@ -267,7 +267,7 @@ const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
         <Star size={12} color="#F59E0B" fill="#F59E0B" />
         <Text style={styles.cardMeta}>
           {' '}
-          {item.avgRating || item.rating || 4.5}
+          {item.avgRating || item.rating || "New"}
         </Text>
         {price ? (
           <>

@@ -58,6 +58,7 @@ const BookingScreen = () => {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [couponApplied, setCouponApplied] = useState(false);
   const [appliedCouponDesc, setAppliedCouponDesc] = useState('');
+  const [appliedCouponMinGuests, setAppliedCouponMinGuests] = useState(0);
   const [gstPercent, setGstPercent] = useState(5);
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
@@ -91,6 +92,19 @@ const BookingScreen = () => {
       }
       return prev.slice(0, total);
     });
+
+    // Auto-remove coupon if guest count drops below minimum requirement
+    if (
+      couponApplied &&
+      appliedCouponMinGuests > 0 &&
+      total < appliedCouponMinGuests
+    ) {
+      setDiscountAmount(0);
+      setCouponApplied(false);
+      setCouponCode('');
+      setAppliedCouponDesc('');
+      setAppliedCouponMinGuests(0);
+    }
   }, [adults, children]);
 
   const showAppModal = cfg => setModal({ visible: true, ...cfg });
@@ -139,6 +153,11 @@ const BookingScreen = () => {
         setCouponCode(code.trim().toUpperCase());
         setDiscountAmount(res.data.discountAmount);
         setCouponApplied(true);
+        // Store minGuests from the available coupons list for later validation
+        const matchedCoupon = availableCoupons.find(
+          c => c.code === code.trim().toUpperCase(),
+        );
+        setAppliedCouponMinGuests(matchedCoupon?.minGuests || 0);
         setAppliedCouponDesc(
           res.data.coupon?.description ||
             `${res.data.coupon?.value}${
@@ -160,6 +179,7 @@ const BookingScreen = () => {
     setCouponApplied(false);
     setCouponCode('');
     setAppliedCouponDesc('');
+    setAppliedCouponMinGuests(0);
   };
 
   // ── Confirm booking ────────────────────────────────────────────────────────

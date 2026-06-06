@@ -65,11 +65,23 @@ export const WishlistProvider = ({ children }) => {
 
   const getOrCreateDefaultWishlist = useCallback(async () => {
     if (wishlists.length > 0) return wishlists[0];
+    // Fetch fresh from server first to avoid creating duplicates
+    try {
+      const res = await wishlistAPI.getMyWishlists();
+      const lists = res.data.wishlists || [];
+      if (lists.length > 0) {
+        setWishlists(lists);
+        setSavedIds(buildSavedIds(lists));
+        return lists[0];
+      }
+    } catch (e) {
+      // Fall through to create
+    }
     const res = await wishlistAPI.createWishlist({ name: DEFAULT_WISHLIST_NAME });
     const newList = res.data.wishlist;
     setWishlists([newList]);
     return newList;
-  }, [wishlists]);
+  }, [wishlists, buildSavedIds]);
 
   // ── Toggle save/unsave for a package ─────────────────────────────────────
 

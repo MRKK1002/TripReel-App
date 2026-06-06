@@ -51,8 +51,6 @@ const resolveAvatar = url => {
   if (url.startsWith('http')) return url;
   return `${SERVER_URL}${url}`;
 };
-
-// ─── Edit Profile Sheet ────────────────────────────────────────────────────
 const EditProfileSheet = ({ visible, user, onClose, onSaved }) => {
   const { updateProfile, uploadAvatar } = useAuth();
 
@@ -339,8 +337,6 @@ const EditProfileSheet = ({ visible, user, onClose, onSaved }) => {
     </Modal>
   );
 };
-
-// ─── Account Settings Sheet ────────────────────────────────────────────────
 const AccountSettingsSheet = ({ visible, user, onClose }) => {
   const rows = [
     { label: 'Full Name', value: user?.name || '—', icon: User },
@@ -468,28 +464,21 @@ const ProfileScreen = () => {
     {
       id: 'settings',
       title: 'Account Settings',
-      description: 'View your account details',
+      description: 'Update account details',
       icon: Settings,
       onPress: () => setSettingsVisible(true),
     },
     {
-      id: 'notifications',
-      title: 'Notifications',
-      description: 'Your alerts & updates',
-      icon: Bell,
-      onPress: () => navigation.navigate('Notification'),
-    },
-    {
       id: 'help',
       title: 'Get Help',
-      description: 'Support & FAQs',
+      description: 'Support & Account Details',
       icon: Info,
       onPress: () => navigation.navigate('GetHelp'),
     },
     {
       id: 'privacy',
       title: 'Privacy',
-      description: 'Privacy policy & data',
+      description: 'Support & Account Details',
       icon: FileText,
       onPress: () => navigation.navigate('Privacy'),
     },
@@ -536,11 +525,12 @@ const ProfileScreen = () => {
 
           <Text style={styles.name}>{user?.name || 'Your Name'}</Text>
           <Text style={styles.sub}>
-            {user?.phone ? `+91 ${user.phone}` : user?.email || ''}
-            {user?.state
-              ? `  •  ${user.state}`
-              : user?.country && user.country !== 'India'
-              ? `  •  ${user.country}`
+            {user?.state && user?.country
+              ? `${user.state}, ${user.country}`
+              : user?.state
+              ? user.state
+              : user?.country
+              ? user.country
               : ''}
           </Text>
 
@@ -549,7 +539,6 @@ const ProfileScreen = () => {
             style={styles.editButton}
             activeOpacity={0.7}
           >
-            <Edit3 size={14} color="#1F8A70" />
             <Text style={styles.editButtonText}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
@@ -565,7 +554,7 @@ const ProfileScreen = () => {
                 activeOpacity={0.7}
               >
                 <View style={styles.iconBox}>
-                  <Icon size={20} color="#1F8A70" />
+                  <Icon size={20} color="#374151" />
                 </View>
                 <View style={styles.menuText}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
@@ -581,13 +570,11 @@ const ProfileScreen = () => {
             onPress={handleLogout}
             activeOpacity={0.7}
           >
-            <View style={[styles.iconBox, { backgroundColor: '#FEE2E2' }]}>
-              <LogOut size={20} color="#DC2626" />
+            <View style={styles.iconBox}>
+              <LogOut size={20} color="#111827" />
             </View>
             <View style={styles.menuText}>
-              <Text style={[styles.menuTitle, { color: '#DC2626' }]}>
-                Log Out
-              </Text>
+              <Text style={styles.menuTitle}>Logout</Text>
             </View>
             <ChevronRight size={18} color="#9CA3AF" />
           </TouchableOpacity>
@@ -628,8 +615,9 @@ const styles = StyleSheet.create({
   profileSection: {
     alignItems: 'center',
     paddingTop: 28,
-    paddingBottom: 8,
+    paddingBottom: 24,
     paddingHorizontal: 24,
+    backgroundColor: '#FFFFFF',
   },
   avatarWrapper: { position: 'relative' },
   avatar: { width: 96, height: 96, borderRadius: 48 },
@@ -639,34 +627,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   name: { marginTop: 14, fontSize: 22, fontWeight: '700', color: '#111827' },
-  sub: { marginTop: 4, fontSize: 13, color: '#9CA3AF', textAlign: 'center' },
+  sub: { marginTop: 4, fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
   editButton: {
     marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#1F8A70',
-    backgroundColor: '#F0FDF9',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
   },
-  editButtonText: { fontSize: 14, fontWeight: '600', color: '#1F8A70' },
-  menuSection: { marginTop: 28, paddingHorizontal: 16, gap: 8 },
+  editButtonText: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  menuSection: { marginTop: 28, paddingHorizontal: 16, gap: 10 },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 14,
   },
   iconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#E6F4EF',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },

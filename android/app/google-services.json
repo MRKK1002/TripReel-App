@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "551822296875",
+    "project_id": "tripreel-c6e61",
+    "storage_bucket": "tripreel-c6e61.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:551822296875:android:52ceee4307072fa269276e",
+        "android_client_info": {
+          "package_name": "com.tripreel.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSgeDmlhNgwFZ_3b45oe_-61vHMNY0KmE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -149,4 +149,21 @@ export const reportsAPI = {
   getMy: () => api.get('/reports/my'),
 };
 
+// Notification endpoints
+export const notificationsAPI = {
+  registerToken: fcmToken =>
+    api.post('/notifications/register-token', { fcmToken }),
+  getMy: () => api.get('/notifications/my'),
+  markAllRead: () => api.patch('/notifications/mark-read'),
+};
+
+// Chat endpoints
+export const chatAPI = {
+  getConversations: () => api.get('/chat/conversations'),
+  getMessages: (conversationId, params = {}) =>
+    api.get(`/chat/${conversationId}/messages`, { params }),
+  sendMessage: (conversationId, data) =>
+    api.post(`/chat/${conversationId}/messages`, data),
+};
+
 export default api;

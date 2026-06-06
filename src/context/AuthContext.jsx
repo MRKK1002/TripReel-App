@@ -62,6 +62,11 @@ export const AuthProvider = ({ children }) => {
       AsyncStorage.setItem(STORAGE_TOKEN_KEY, newToken),
       AsyncStorage.setItem(STORAGE_USER_KEY, JSON.stringify(newUser)),
     ]);
+    // Register FCM token for push notifications (non-blocking)
+    try {
+      const { registerFCMToken } = require('../services/notifications');
+      registerFCMToken();
+    } catch {}
   };
 
   // Called from synchronous onPress — writes logout flag first (survives app kill),

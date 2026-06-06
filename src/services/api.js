@@ -1,7 +1,13 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://192.168.0.127:5001/api';
-export const SERVER_URL = 'http://192.168.0.127:5001';
+// Auto-detect: if the app can reach local backend, use it; otherwise use live
+const LOCAL_URL = 'http://192.168.0.127:5001';
+const LIVE_URL = 'https://tripreel-backend.onrender.com';
+
+// In development (debug mode), use local. In release/production, use live.
+// __DEV__ is true when running in Metro dev server, false in release builds
+const BASE_URL = __DEV__ ? `${LOCAL_URL}/api` : `${LIVE_URL}/api`;
+export const SERVER_URL = __DEV__ ? LOCAL_URL : LIVE_URL;
 
 const api = axios.create({
   baseURL: BASE_URL,

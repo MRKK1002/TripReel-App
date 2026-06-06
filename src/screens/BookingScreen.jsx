@@ -65,6 +65,11 @@ const BookingScreen = () => {
   const [couponApplied, setCouponApplied] = useState(false);
   const [appliedCouponDesc, setAppliedCouponDesc] = useState('');
   const [appliedCouponMinGuests, setAppliedCouponMinGuests] = useState(0);
+  // Store coupon details for dynamic recalculation
+  const [appliedCouponType, setAppliedCouponType] = useState(''); // 'percentage' or 'flat'
+  const [appliedCouponValue, setAppliedCouponValue] = useState(0);
+  const [appliedCouponMaxDiscount, setAppliedCouponMaxDiscount] = useState(0);
+  const [appliedCouponMinOrder, setAppliedCouponMinOrder] = useState(0);
   const [gstPercent, setGstPercent] = useState(5);
   const [adminPolicies, setAdminPolicies] = useState({
     cancellation: '',
@@ -118,6 +123,10 @@ const BookingScreen = () => {
       setCouponCode('');
       setAppliedCouponDesc('');
       setAppliedCouponMinGuests(0);
+      setAppliedCouponType('');
+      setAppliedCouponValue(0);
+      setAppliedCouponMaxDiscount(0);
+      setAppliedCouponMinOrder(0);
     }
   }, [adults, children]);
 
@@ -134,7 +143,32 @@ const BookingScreen = () => {
   const childSubtotal = childPrice * children;
   const subtotal = adultSubtotal + childSubtotal;
   const gstAmount = Math.round((subtotal * gstPercent) / 100);
-  const totalAmount = subtotal + gstAmount - discountAmount;
+
+  // Dynamically recalculate discount based on current subtotal and guest count
+  let computedDiscount = 0;
+  if (
+    couponApplied &&
+    totalSeats >= (appliedCouponMinGuests || 0) &&
+    (appliedCouponMinOrder <= 0 || subtotal >= appliedCouponMinOrder)
+  ) {
+    if (appliedCouponType === 'percentage') {
+      computedDiscount = Math.round((subtotal * appliedCouponValue) / 100);
+      if (
+        appliedCouponMaxDiscount > 0 &&
+        computedDiscount > appliedCouponMaxDiscount
+      ) {
+        computedDiscount = appliedCouponMaxDiscount;
+      }
+    } else {
+      computedDiscount = appliedCouponValue;
+    }
+    if (computedDiscount > subtotal) computedDiscount = subtotal;
+  } else if (couponApplied) {
+    // Coupon conditions not met — discount is 0
+    computedDiscount = 0;
+  }
+
+  const totalAmount = subtotal + gstAmount - computedDiscount;
 
   const seatsLeft = selectedBatch
     ? (selectedBatch.totalSeats || 0) - (selectedBatch.bookedSeats || 0)
@@ -156,35 +190,69 @@ const BookingScreen = () => {
 
   const handleApplyCoupon = async code => {
     if (!code?.trim()) return;
+    const total = adults + children;
     try {
       const res = await couponsAPI.validate({
         batchId,
         code: code.trim(),
-        guests: totalSeats,
+        guests: total,
         subtotal,
       });
       if (res.data.success) {
-        setCouponCode(code.trim().toUpperCase());
-        setDiscountAmount(res.data.discountAmount);
-        setCouponApplied(true);
-        // Store minGuests from the available coupons list for later validation
+        const coupon = res.data.coupon || {};
         const matchedCoupon = availableCoupons.find(
           c => c.code === code.trim().toUpperCase(),
         );
-        setAppliedCouponMinGuests(matchedCoupon?.minGuests || 0);
+        const minGuests = matchedCoupon?.minGuests || coupon.minGuests || 0;
+
+        // Check minimum guests requirement
+        if (minGuests > 0 && total < minGuests) {
+          showAppModal({
+            variant: 'error',
+            title: 'Minimum Guests Required',
+            message: `This coupon requires at least ${minGuests} guests. You currently have ${total}.`,
+          });
+          return;
+        }
+
+        // Check minimum order amount
+        const minOrder =
+          matchedCoupon?.minOrderAmount || coupon.minOrderAmount || 0;
+        if (minOrder > 0 && subtotal < minOrder) {
+          showAppModal({
+            variant: 'error',
+            title: 'Minimum Order Required',
+            message: `This coupon requires a minimum order of ₹${minOrder.toLocaleString(
+              'en-IN',
+            )}. Your current total is ₹${subtotal.toLocaleString('en-IN')}.`,
+          });
+          return;
+        }
+
+        setCouponCode(code.trim().toUpperCase());
+        setCouponApplied(true);
+        setAppliedCouponMinGuests(minGuests);
+        setAppliedCouponMinOrder(minOrder);
+        setAppliedCouponType(coupon.type || 'percentage');
+        setAppliedCouponValue(coupon.value || 0);
+        setAppliedCouponMaxDiscount(coupon.maxDiscount || 0);
+        setDiscountAmount(res.data.discountAmount || 0);
         setAppliedCouponDesc(
-          res.data.coupon?.description ||
-            `${res.data.coupon?.value}${
-              res.data.coupon?.type === 'percentage' ? '%' : '₹'
-            } off`,
+          coupon.description ||
+            `Get ${coupon.value}${
+              coupon.type === 'percentage' ? '%' : '₹'
+            } off${
+              coupon.maxDiscount ? ` (max ₹${coupon.maxDiscount})` : ''
+            } for ${minGuests}+ guests`,
         );
         setShowCouponModal(false);
       }
     } catch (err) {
-      Alert.alert(
-        'Coupon Error',
-        err?.response?.data?.message || 'Invalid coupon',
-      );
+      showAppModal({
+        variant: 'error',
+        title: 'Coupon Error',
+        message: err?.response?.data?.message || 'Invalid coupon',
+      });
     }
   };
 
@@ -194,6 +262,10 @@ const BookingScreen = () => {
     setCouponCode('');
     setAppliedCouponDesc('');
     setAppliedCouponMinGuests(0);
+    setAppliedCouponType('');
+    setAppliedCouponValue(0);
+    setAppliedCouponMaxDiscount(0);
+    setAppliedCouponMinOrder(0);
   };
 
   // ── Confirm booking ────────────────────────────────────────────────────────
@@ -659,7 +731,7 @@ const BookingScreen = () => {
                 </Text>
                 <Text style={{ fontSize: 11, color: '#10B981', marginTop: 2 }}>
                   {appliedCouponDesc} — ₹
-                  {discountAmount.toLocaleString('en-IN')} off
+                  {computedDiscount.toLocaleString('en-IN')} off
                 </Text>
               </>
             ) : (
@@ -718,9 +790,8 @@ const BookingScreen = () => {
             <Text
               style={{ marginLeft: 8, fontSize: 13, color: '#374151', flex: 1 }}
             >
-              {destination?.policies?.cancellationPolicy ||
-                adminPolicies.cancellation ||
-                'Contact operator for details'}
+              {adminPolicies.cancellation ||
+                'Free cancellation up to 7 days before departure. 50% refund for cancellations 3-7 days prior. No refund within 3 days of departure.'}
             </Text>
           </View>
           <Text
@@ -745,7 +816,8 @@ const BookingScreen = () => {
             <Text
               style={{ marginLeft: 8, fontSize: 13, color: '#374151', flex: 1 }}
             >
-              Booking is confirmed immediately. Secure payment.
+              {adminPolicies.refund ||
+                'Booking is confirmed immediately. Refund as per cancellation policy.'}
             </Text>
           </View>
         </View>
@@ -898,10 +970,10 @@ const BookingScreen = () => {
               label={`GST (${gstPercent}%)`}
               value={`₹${gstAmount.toLocaleString('en-IN')}`}
             />
-            {discountAmount > 0 && (
+            {computedDiscount > 0 && (
               <PriceRow
                 label={`Coupon (${couponCode})`}
-                value={`-₹${discountAmount.toLocaleString('en-IN')}`}
+                value={`-₹${computedDiscount.toLocaleString('en-IN')}`}
                 green
               />
             )}

@@ -22,6 +22,7 @@ import {
   Wallet,
   Tag,
   MapPin,
+  Camera,
 } from 'lucide-react-native';
 import {
   tripBookingsAPI,
@@ -49,7 +50,7 @@ const BookingScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
-  const { destination, selectedBatch, batchId } = route.params || {};
+  const { destination, selectedBatch, batchId, selectedAddons: routeAddons } = route.params || {};
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [adults, setAdults] = useState(1);
@@ -81,6 +82,12 @@ const BookingScreen = () => {
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [couponsLoading, setCouponsLoading] = useState(false);
   const [booking, setBooking] = useState(false);
+  const [selectedAddon, setSelectedAddon] = useState(
+    routeAddons && routeAddons.length > 0 ? routeAddons[0].name : null,
+  );
+  const addonPrice = routeAddons && routeAddons.length > 0
+    ? routeAddons.reduce((sum, a) => sum + (a.price || 0), 0)
+    : 0;
 
   // Fetch GST + policies from admin settings
   useEffect(() => {
@@ -141,7 +148,7 @@ const BookingScreen = () => {
 
   const adultSubtotal = adultPrice * adults;
   const childSubtotal = childPrice * children;
-  const subtotal = adultSubtotal + childSubtotal;
+  const subtotal = adultSubtotal + childSubtotal + addonPrice;
   const gstAmount = Math.round((subtotal * gstPercent) / 100);
 
   // Dynamically recalculate discount based on current subtotal and guest count
@@ -300,6 +307,52 @@ const BookingScreen = () => {
         })),
         couponCode: couponApplied ? couponCode : '',
       });
+
+      // ── Book Snapja creator if Photographer/Reelmaker add-on selected ────
+      if (routeAddons && routeAddons.length > 0) {
+        const snapjaAddons = routeAddons.filter(
+          a =>
+            a.name?.toLowerCase().includes('photographer') ||
+            a.name?.toLowerCase().includes('reel'),
+        );
+
+        for (const addon of snapjaAddons) {
+          const serviceType = addon.name?.toLowerCase().includes('photographer')
+            ? 'photographer'
+            : 'reelmaker';
+
+          try {
+            await fetch('https://api.snapja.com/api/tripreel/bookings', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': 'tripreel_snapja_2025',
+              },
+              body: JSON.stringify({
+                service_type: serviceType,
+                location: destination?.location || destination?.title || 'India',
+                price: addon.price || 2000,
+                duration: 1,
+                date: selectedBatch?.startDate
+                  ? new Date(selectedBatch.startDate).toISOString().split('T')[0]
+                  : new Date().toISOString().split('T')[0],
+                time: '10:00',
+                booking_type: 'scheduled',
+                customer_name: user?.name || travelers[0]?.name || 'TripReel User',
+                customer_phone: user?.phone || '',
+                customer_email: user?.email || '',
+                notes: `TripReel trip: ${destination?.title || 'Trip'} — ${addon.name}`,
+                timezone: 'Asia/Kolkata',
+                auto_confirm_payment: true,
+              }),
+            });
+          } catch (snapjaErr) {
+            // Don't fail the trip booking if Snapja booking fails
+            console.log('Snapja booking failed for addon:', addon.name, snapjaErr);
+          }
+        }
+      }
+
       showAppModal({
         variant: 'success',
         title: 'Booking Confirmed! ✓',
@@ -404,17 +457,16 @@ const BookingScreen = () => {
             </Text>
             <View
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
+                backgroundColor: '#E6F4EF',
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                borderRadius: 4,
+                alignSelf: 'flex-start',
                 marginTop: 4,
               }}
             >
-              <MapPin size={12} color="#9CA3AF" />
-              <Text
-                style={{ fontSize: 12, color: '#6B7280', marginLeft: 4 }}
-                numberOfLines={1}
-              >
-                {destination?.location || ''}
+              <Text style={{ fontSize: 10, fontWeight: '600', color: '#1F8A70' }}>
+                Guest Favorite
               </Text>
             </View>
             <View
@@ -436,11 +488,52 @@ const BookingScreen = () => {
                 {destination?.avgRating || destination?.rating || 4.5}
               </Text>
               <Text style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>
-                • {destination?.reviewCount || 0} reviews
+                {destination?.reviewCount || '20k'} reviews
+              </Text>
+              <Text style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>
+                • From ₹{(destination?.price || 0).toLocaleString('en-IN')}
               </Text>
             </View>
           </View>
         </View>
+
+        {/* Add-Ons */}
+        {routeAddons && routeAddons.length > 0 && (
+          <TouchableOpacity
+            style={cardStyle}
+            onPress={() => navigation.goBack()}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={iconBox}>
+                <Camera size={18} color="#6B7280" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}
+                >
+                  {routeAddons.map(a => a.name).join(', ')}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                  Ad-Ons
+                </Text>
+              </View>
+              <View
+                style={{
+                  backgroundColor: '#E6F4EF',
+                  paddingHorizontal: 14,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}
+                >
+                  Change
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Dates */}
         <View style={cardStyle}>
@@ -455,7 +548,21 @@ const BookingScreen = () => {
                 {dateLabel}
               </Text>
               <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
-                Travel Dates
+                Dates
+              </Text>
+            </View>
+            <View
+              style={{
+                backgroundColor: '#E6F4EF',
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderRadius: 8,
+              }}
+            >
+              <Text
+                style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}
+              >
+                Change
               </Text>
             </View>
           </View>
@@ -513,7 +620,7 @@ const BookingScreen = () => {
                 ₹{totalAmount.toLocaleString('en-IN')}
               </Text>
               <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
-                Total Price (incl. GST)
+                Total Price
               </Text>
             </View>
             <View
@@ -716,9 +823,11 @@ const BookingScreen = () => {
             marginBottom: 12,
             flexDirection: 'row',
             alignItems: 'center',
+            borderWidth: 1,
+            borderColor: '#E5E7EB',
           }}
         >
-          <View style={iconBox}>
+          <View style={[iconBox, { transform: [{ scaleX: -1 }] }]}>
             <Tag size={18} color="#6B7280" />
           </View>
           <View style={{ flex: 1 }}>
@@ -779,47 +888,59 @@ const BookingScreen = () => {
           >
             Cancellation Policy
           </Text>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              marginBottom: 6,
-            }}
-          >
-            <Check size={14} color="#1F8A70" style={{ marginTop: 2 }} />
-            <Text
-              style={{ marginLeft: 8, fontSize: 13, color: '#374151', flex: 1 }}
-            >
-              {adminPolicies.cancellation ||
-                'Free cancellation up to 7 days before departure. 50% refund for cancellations 3-7 days prior. No refund within 3 days of departure.'}
-            </Text>
-          </View>
+          {(adminPolicies.cancellation ||
+            'Free cancellation up to 5 days before travel.No refund after that')
+            .split('.')
+            .filter(Boolean)
+            .map((line, i) => (
+              <View
+                key={i}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  marginBottom: 8,
+                }}
+              >
+                <Check size={14} color="#9CA3AF" style={{ marginTop: 2 }} />
+                <Text
+                  style={{ marginLeft: 8, fontSize: 14, color: '#1E2A45', flex: 1 }}
+                >
+                  {line.trim()}
+                </Text>
+              </View>
+            ))}
           <Text
             style={{
               fontSize: 15,
               fontWeight: '700',
               color: '#111827',
-              marginTop: 12,
+              marginTop: 14,
               marginBottom: 10,
             }}
           >
             Payment Policy
           </Text>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              marginBottom: 6,
-            }}
-          >
-            <Check size={14} color="#1F8A70" style={{ marginTop: 2 }} />
-            <Text
-              style={{ marginLeft: 8, fontSize: 13, color: '#374151', flex: 1 }}
-            >
-              {adminPolicies.refund ||
-                'Booking is confirmed immediately. Refund as per cancellation policy.'}
-            </Text>
-          </View>
+          {(adminPolicies.refund ||
+            'Pay full amount during booking.Secure online payment')
+            .split('.')
+            .filter(Boolean)
+            .map((line, i) => (
+              <View
+                key={i}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  marginBottom: 8,
+                }}
+              >
+                <Check size={14} color="#9CA3AF" style={{ marginTop: 2 }} />
+                <Text
+                  style={{ marginLeft: 8, fontSize: 14, color: '#1E2A45', flex: 1 }}
+                >
+                  {line.trim()}
+                </Text>
+              </View>
+            ))}
         </View>
       </ScrollView>
 
@@ -854,7 +975,7 @@ const BookingScreen = () => {
             <ActivityIndicator color="#fff" size="small" />
           ) : (
             <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
-              Confirm Booking — ₹{totalAmount.toLocaleString('en-IN')}
+              Continue to pay
             </Text>
           )}
         </TouchableOpacity>

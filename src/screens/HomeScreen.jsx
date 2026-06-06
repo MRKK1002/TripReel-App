@@ -64,12 +64,9 @@ const SectionHeader = ({ title, onSeeAll }) => (
       <TouchableOpacity
         onPress={onSeeAll}
         hitSlop={12}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+        style={{ flexDirection: 'row', alignItems: 'center' }}
       >
-        <Text style={{ fontSize: 14, color: '#1F8A70', fontWeight: '600' }}>
-          See all
-        </Text>
-        <ChevronRight size={15} color="#1F8A70" strokeWidth={2.5} />
+        <ChevronRight size={20} color="#000000" strokeWidth={2.5} />
       </TouchableOpacity>
     )}
   </View>
@@ -115,7 +112,7 @@ const PackageCard = ({ item, onPress, onWishlist, inWishlist }) => {
         >
           <Heart
             size={16}
-            color={inWishlist ? '#EF4444' : '#9CA3AF'}
+            color={inWishlist ? '#EF4444' : '#FFFFFF'}
             fill={inWishlist ? '#EF4444' : 'none'}
           />
         </TouchableOpacity>
@@ -181,7 +178,7 @@ const RecentCard = ({ item, onPress, inWishlist, onWishlist }) => {
             width: 26,
             height: 26,
             borderRadius: 7,
-            backgroundColor: 'rgba(255,255,255,0.92)',
+            backgroundColor: 'transparent',
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -190,7 +187,7 @@ const RecentCard = ({ item, onPress, inWishlist, onWishlist }) => {
         >
           <Heart
             size={14}
-            color={inWishlist ? '#EF4444' : '#9CA3AF'}
+            color={inWishlist ? '#EF4444' : '#FFFFFF'}
             fill={inWishlist ? '#EF4444' : 'none'}
           />
         </TouchableOpacity>
@@ -264,7 +261,7 @@ const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
         >
           <Heart
             size={16}
-            color={inWishlist ? '#EF4444' : '#9CA3AF'}
+            color={inWishlist ? '#EF4444' : '#FFFFFF'}
             fill={inWishlist ? '#EF4444' : 'none'}
           />
         </TouchableOpacity>
@@ -591,18 +588,10 @@ const HomeScreen = () => {
   // Effective location — GPS first, profile fallback
   const effectiveState = (gpsState || userState).trim();
   const effectiveCountry = (gpsCountry || userCountry).trim();
-  // Label for "Experiences Near You" section
-  const nearYouLabel = effectiveState
-    ? `Experiences in ${effectiveState}`
-    : effectiveCountry && effectiveCountry !== 'India'
-    ? `Experiences in ${effectiveCountry}`
-    : 'Experiences Near You';
-  // Label for reel section
-  const reelLabel = effectiveState
-    ? `Experience Reels in ${effectiveState}`
-    : effectiveCountry && effectiveCountry !== 'India'
-    ? `Experience Reels in ${effectiveCountry}`
-    : 'Experience Reels';
+  // Label for "Experiences Near You" section (static title)
+  const nearYouLabel = 'Experiences Near You';
+  // Label for reel section (static title)
+  const reelLabel = 'Experiences Near You';
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -899,33 +888,28 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 9,
     left: 9,
-    backgroundColor: '#1F8A70',
+    backgroundColor: '#E6F4EF',
     paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 6,
   },
   badgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#fff',
+    color: '#1F8A70',
     letterSpacing: 0.2,
   },
-  // Heart button — white circle background, gray heart (matches design)
+  // Heart button — no background, white heart outline
   heartBtn: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    top: 9,
+    right: 9,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
   },
   cardTitle: {
     marginTop: 9,

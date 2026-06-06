@@ -334,40 +334,6 @@ const WishlistScreen = () => {
 
           return (
             <View key={wl._id} style={{ marginTop: 24 }}>
-              {/* Wishlist header row */}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  paddingHorizontal: 20,
-                  marginBottom: 12,
-                }}
-              >
-                <View>
-                  <Text
-                    style={{
-                      fontSize: 17,
-                      fontWeight: '700',
-                      color: '#111827',
-                    }}
-                  >
-                    {wl.name}
-                  </Text>
-                  <Text
-                    style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}
-                  >
-                    {packages.length} saved
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => handleDeleteWishlist(wl._id, wl.name)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Trash2 size={18} color="#EF4444" />
-                </TouchableOpacity>
-              </View>
-
               {/* Package cards grid */}
               <View
                 style={{
@@ -420,7 +386,7 @@ const WishlistScreen = () => {
                             <ActivityIndicator color="#fff" size="small" />
                           </View>
                         )}
-                        {/* Remove from wishlist button */}
+                        {/* Trash icon on card to remove from wishlist */}
                         <TouchableOpacity
                           onPress={async () => {
                             await toggleWishlist(pkgObj._id);
@@ -438,7 +404,7 @@ const WishlistScreen = () => {
                             justifyContent: 'center',
                           }}
                         >
-                          <Heart size={16} color="#EF4444" fill="#EF4444" />
+                          <Trash2 size={16} color="#EF4444" />
                         </TouchableOpacity>
                       </View>
 

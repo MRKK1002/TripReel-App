@@ -63,7 +63,9 @@ const DestinationDetailScreen = () => {
   const [showFullAbout, setShowFullAbout] = useState(false);
   const [showFullItinerary, setShowFullItinerary] = useState(false);
   const [showInclusions, setShowInclusions] = useState(true);
+  const [showMoreInclusions, setShowMoreInclusions] = useState(false);
   const [showPolicies, setShowPolicies] = useState(true);
+  const [selectedAddons, setSelectedAddons] = useState([]);
   const [selectedDate, setSelectedDate] = useState(0);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const scrollViewRef = useRef(null);
@@ -425,7 +427,6 @@ const DestinationDetailScreen = () => {
                 flexDirection: 'row',
                 overflow: 'hidden',
               }}
-              className="border-[#E5E7EB] border-[0.8px]"
             >
               {/* Left: Destination */}
               <View
@@ -451,7 +452,7 @@ const DestinationDetailScreen = () => {
                     {destination.location}
                   </Text>
                   <Text
-                    style={{ fontSize: 12, color: '#7B8DB0', marginTop: 1 }}
+                    style={{ fontSize: 12, color: '#64748B', marginTop: 1 }}
                   >
                     Destination
                   </Text>
@@ -501,7 +502,7 @@ const DestinationDetailScreen = () => {
                     {destination.priceLabel}
                   </Text>
                   <Text
-                    style={{ fontSize: 12, color: '#7B8DB0', marginTop: 1 }}
+                    style={{ fontSize: 12, color: '#64748B', marginTop: 1 }}
                   >
                     Price
                   </Text>
@@ -528,8 +529,9 @@ const DestinationDetailScreen = () => {
               backgroundColor: '#F8FAFC',
               borderRadius: 16,
               padding: 18,
+              borderWidth: 1,
+              borderColor: '#E5E7EB',
             }}
-            className="border-[#E5E7EB] border-[0.8px]"
           >
             {/* Duration row */}
             <View
@@ -692,11 +694,9 @@ const DestinationDetailScreen = () => {
           {/* About This Trip */}
           <View
             style={{
-              backgroundColor: '#fff',
-              borderRadius: 16,
-              marginHorizontal: 16,
+              marginHorizontal: 20,
               marginBottom: 12,
-              padding: 16,
+              paddingVertical: 16,
             }}
           >
             <Text
@@ -706,11 +706,10 @@ const DestinationDetailScreen = () => {
                 fontSize: 22,
                 fontWeight: '700',
               }}
-              // className="text-2xl font-medium"
             >
               About this trip
             </Text>
-            <Text style={{ fontSize: 13, color: '#6B7280', lineHeight: 20 }}>
+            <Text style={{ fontSize: 15, color: '#374151', lineHeight: 22 }}>
               {showFullAbout
                 ? destination.aboutThisTrip ||
                   destination.about ||
@@ -729,10 +728,10 @@ const DestinationDetailScreen = () => {
               100 && (
               <TouchableOpacity
                 onPress={() => setShowFullAbout(!showFullAbout)}
-                style={{ marginTop: 6 }}
+                style={{ marginTop: 10 }}
               >
                 <Text
-                  style={{ color: '#1F8A70', fontSize: 13, fontWeight: '600' }}
+                  style={{ color: '#111827', fontSize: 15, fontWeight: '700', textDecorationLine: 'underline' }}
                 >
                   {showFullAbout ? 'Read Less' : 'Read More'}
                 </Text>
@@ -753,11 +752,9 @@ const DestinationDetailScreen = () => {
           {/* Itinerary */}
           <View
             style={{
-              backgroundColor: '#fff',
-              borderRadius: 16,
-              marginHorizontal: 16,
+              marginHorizontal: 20,
               marginBottom: 12,
-              padding: 16,
+              paddingVertical: 16,
             }}
           >
             <TouchableOpacity
@@ -765,7 +762,7 @@ const DestinationDetailScreen = () => {
                 flexDirection: 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: 12,
+                marginBottom: 16,
               }}
               onPress={() => setShowFullItinerary(!showFullItinerary)}
             >
@@ -784,60 +781,75 @@ const DestinationDetailScreen = () => {
             {destination.itinerary
               ?.slice(0, showFullItinerary ? undefined : 1)
               .map((day, i) => (
-                <View key={i} style={{ marginBottom: 12 }}>
+                <View key={i} style={{ marginBottom: 16 }}>
+                  {/* Day header with background */}
                   <View
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      marginBottom: 8,
+                      backgroundColor: '#F1F5F9',
+                      borderRadius: 10,
+                      padding: 12,
+                      marginBottom: 14,
                     }}
                   >
                     <View
                       style={{
                         width: 28,
                         height: 28,
-                        borderRadius: 14,
-                        // backgroundColor: '#E6F4EF',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        marginRight: 8,
+                        marginRight: 10,
                       }}
                     >
                       <Image
                         source={require('./../assets/Calendar_check.png')}
-                        className="w-6 h-6"
+                        style={{ width: 24, height: 24 }}
                       />
                     </View>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: '600',
-                        color: '#111827',
-                      }}
-                    >
-                      Day {day.day ?? i + 1} • {day.title}
-                    </Text>
+                    <View>
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: '700',
+                          color: '#111827',
+                        }}
+                      >
+                        Day {day.day ?? i + 1}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: '#64748B',
+                          marginTop: 2,
+                        }}
+                      >
+                        {day.title}
+                      </Text>
+                    </View>
                   </View>
+                  {/* Day points */}
                   {day.points?.map((pt, j) => (
                     <View
                       key={j}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'flex-start',
-                        marginBottom: 4,
-                        paddingLeft: 36,
+                        marginBottom: 12,
+                        paddingLeft: 8,
                       }}
                     >
                       <Check
-                        size={13}
-                        color="#1F8A70"
-                        style={{ marginTop: 2 }}
+                        size={14}
+                        color="#9CA3AF"
+                        style={{ marginTop: 3 }}
                       />
                       <Text
                         style={{
-                          marginLeft: 8,
-                          fontSize: 13,
-                          color: '#374151',
+                          marginLeft: 10,
+                          fontSize: 15,
+                          color: '#1E2A45',
+                          fontWeight: '500',
                           flex: 1,
                         }}
                       >
@@ -851,9 +863,21 @@ const DestinationDetailScreen = () => {
             {destination.itinerary?.length > 1 && (
               <TouchableOpacity
                 onPress={() => setShowFullItinerary(!showFullItinerary)}
+                style={{
+                  backgroundColor: '#F1F5F9',
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  marginTop: 4,
+                }}
               >
                 <Text
-                  style={{ color: '#1F8A70', fontSize: 13, fontWeight: '600' }}
+                  style={{
+                    color: '#111827',
+                    fontSize: 15,
+                    fontWeight: '700',
+                    textDecorationLine: 'underline',
+                  }}
                 >
                   {showFullItinerary
                     ? 'Show less'
@@ -876,11 +900,9 @@ const DestinationDetailScreen = () => {
           {/* Available Dates & Pricing */}
           <View
             style={{
-              backgroundColor: '#fff',
-              borderRadius: 16,
-              marginHorizontal: 16,
+              marginHorizontal: 20,
               marginBottom: 12,
-              padding: 16,
+              paddingVertical: 16,
             }}
           >
             <Text
@@ -923,16 +945,16 @@ const DestinationDetailScreen = () => {
                     key={i}
                     onPress={() => !d.isFull && setSelectedDate(i)}
                     style={{
-                      width: 130,
-                      borderWidth: 1.5,
-                      borderColor: selectedDate === i ? '#1F8A70' : '#E5E7EB',
+                      width: 160,
+                      borderColor: selectedDate === i ? '#1F8A70' : 'transparent',
+                      borderWidth: 0,
                       backgroundColor: d.isFull
                         ? '#F1F5F9'
                         : selectedDate === i
                         ? '#EBFFF8'
-                        : '#FFF5F5',
+                        : '#FFF1F0',
                       borderRadius: 10,
-                      padding: 12,
+                      padding: 14,
                       opacity: d.isFull ? 0.6 : 1,
                     }}
                   >
@@ -1031,11 +1053,9 @@ const DestinationDetailScreen = () => {
           {/* Inclusions / Exclusions */}
           <View
             style={{
-              backgroundColor: '#fff',
-              borderRadius: 16,
-              marginHorizontal: 16,
+              marginHorizontal: 20,
               marginBottom: 12,
-              padding: 16,
+              paddingVertical: 16,
             }}
           >
             <TouchableOpacity
@@ -1043,7 +1063,7 @@ const DestinationDetailScreen = () => {
                 flexDirection: 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: 12,
+                marginBottom: 16,
               }}
               onPress={() => setShowInclusions(!showInclusions)}
             >
@@ -1060,40 +1080,63 @@ const DestinationDetailScreen = () => {
             </TouchableOpacity>
             {showInclusions && (
               <>
-                {destination.inclusions?.map((inc, i) => (
-                  <View
-                    key={i}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      marginBottom: 6,
-                    }}
-                  >
-                    <Check size={14} color="#1F8A70" />
-                    <Text
-                      style={{ marginLeft: 8, fontSize: 13, color: '#374151' }}
-                    >
-                      {inc}
-                    </Text>
-                  </View>
-                ))}
-                {destination.exclusions?.map((exc, i) => (
-                  <View
-                    key={i}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      marginBottom: 6,
-                    }}
-                  >
-                    <X size={14} color="#EF4444" />
-                    <Text
-                      style={{ marginLeft: 8, fontSize: 13, color: '#374151' }}
-                    >
-                      {exc}
-                    </Text>
-                  </View>
-                ))}
+                {(() => {
+                  const allItems = [
+                    ...(destination.inclusions || []).map(item => ({ type: 'inc', text: item })),
+                    ...(destination.exclusions || []).map(item => ({ type: 'exc', text: item })),
+                  ];
+                  const showAll = showMoreInclusions;
+                  const visibleItems = showAll ? allItems : allItems.slice(0, 4);
+                  return (
+                    <>
+                      {visibleItems.map((item, i) => (
+                        <View
+                          key={i}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            marginBottom: 12,
+                            paddingLeft: 4,
+                          }}
+                        >
+                          {item.type === 'inc' ? (
+                            <Check size={14} color="#1F8A70" />
+                          ) : (
+                            <X size={14} color="#EF4444" />
+                          )}
+                          <Text
+                            style={{ marginLeft: 10, fontSize: 15, color: '#1E2A45', fontWeight: '500' }}
+                          >
+                            {item.text}
+                          </Text>
+                        </View>
+                      ))}
+                      {allItems.length > 4 && (
+                        <TouchableOpacity
+                          onPress={() => setShowMoreInclusions(!showMoreInclusions)}
+                          style={{
+                            backgroundColor: '#F1F5F9',
+                            borderRadius: 10,
+                            paddingVertical: 12,
+                            alignItems: 'center',
+                            marginTop: 8,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: '#111827',
+                              fontSize: 15,
+                              fontWeight: '700',
+                              textDecorationLine: 'underline',
+                            }}
+                          >
+                            {showAll ? 'Show Less' : 'Show More'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  );
+                })()}
               </>
             )}
           </View>
@@ -1108,203 +1151,224 @@ const DestinationDetailScreen = () => {
             }}
           />
 
-          {/* Add-ons */}
-          {destination.addons?.length > 0 && (
-            <View
+          {/* Add-ons — Static, always visible */}
+          <View
+            style={{
+              marginHorizontal: 20,
+              marginBottom: 12,
+              paddingVertical: 16,
+            }}
+          >
+            <Text
               style={{
-                backgroundColor: '#fff',
-                borderRadius: 16,
-                marginHorizontal: 16,
-                marginBottom: 12,
-                padding: 16,
+                fontSize: 22,
+                fontWeight: '700',
+                color: '#111827',
+                marginBottom: 4,
               }}
             >
+              {'Add-ons - '}
               <Text
+                style={{ fontSize: 18, fontWeight: '400', color: '#111827', fontStyle: 'italic' }}
+              >
+                Make your trip memorable
+              </Text>
+            </Text>
+            {[
+              {
+                name: 'Professional Photographer',
+                subtitle: 'No travel required',
+                price: 2000,
+                details: ['Local', '30 min', '2 Reels'],
+                color: '#EFF4FF',
+                detailsBg: '#E7EDFA',
+              },
+              {
+                name: 'Professional Reel maker',
+                subtitle: 'Shoot on iPhone & Travel to your location',
+                price: 2000,
+                details: ['Travel', '30 min', '2 Reels'],
+                color: '#F3FAF7',
+                detailsBg: '#E7F2EE',
+              },
+            ].map((addon, i) => (
+              <View
+                key={i}
                 style={{
-                  fontSize: 16,
-                  fontWeight: '700',
-                  color: '#111827',
-                  marginBottom: 4,
+                  borderRadius: 12,
+                  padding: 12,
+                  marginTop: 12,
+                  backgroundColor: addon.color,
                 }}
               >
-                {'Add-ons '}
-                <Text
-                  style={{ fontSize: 14, fontWeight: '400', color: '#6B7280' }}
-                >
-                  - Make your trip memorable
-                </Text>
-              </Text>
-              {destination.addons.map((addon, i) => (
                 <View
-                  key={i}
                   style={{
-                    borderWidth: 1,
-                    borderColor: '#E5E7EB',
-                    borderRadius: 12,
-                    padding: 12,
-                    marginTop: 12,
-                    backgroundColor: i % 2 === 0 ? '#EFF4FF' : '#F3FAF7', // Alternating backgrounds
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
                   }}
                 >
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: '600',
-                          color: '#111827',
-                        }}
-                      >
-                        {addon.name}
-                      </Text>
-                      <Text
-                        style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}
-                      >
-                        No travel required
-                      </Text>
-                    </View>
-                    <Image
-                      source={{
-                        uri: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=100&h=100&fit=crop',
-                      }}
-                      style={{
-                        width: 72,
-                        height: 72,
-                        borderRadius: 10,
-                        marginLeft: 12,
-                      }}
-                      resizeMode="cover"
-                    />
-                  </View>
-
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      marginTop: 8,
-                      backgroundColor: i % 2 === 0 ? '#E7EDFA' : '#E7F2EE',
-                      padding: 5,
-                      borderRadius: 10,
-                    }}
-                  >
-                    {addon.details?.map((d, j) => (
-                      <View key={j} style={{ alignItems: 'center', flex: 1 }}>
-                        <View
-                          style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 16,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginBottom: 2,
-                          }}
-                        >
-                          {j === 0 ? (
-                            <Image
-                              source={require('./../assets/local.png')}
-                              style={{ width: 24, height: 24 }}
-                            />
-                          ) : j === 1 ? (
-                            <Image
-                              source={require('./../assets/duration.png')}
-                              style={{ width: 24, height: 24 }}
-                            />
-                          ) : (
-                            <Image
-                              source={require('./../assets/reel.png')}
-                              style={{ width: 24, height: 24 }}
-                            />
-                          )}
-                        </View>
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            color: '#334155',
-                            textAlign: 'center',
-                            width: '100%',
-                          }}
-                        >
-                          {d}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginTop: 12,
-                    }}
-                  >
+                  <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: '700',
                         color: '#111827',
                       }}
                     >
-                      Just{' '}
-                      <Text className="text-2xl font-medium">
-                        ₹{addon.price?.toLocaleString('en-IN')}
-                      </Text>
+                      {addon.name}
                     </Text>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: '#E6F4EF',
-                        paddingHorizontal: 24,
-                        paddingVertical: 8,
-                        borderRadius: 8,
-                        borderWidth: 1, // thickness
-                        borderColor: '#1F8A70', // color
-                        width: 126,
-                        height: 40,
-                        textAlign: 'center',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
+                    <Text
+                      style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}
                     >
-                      <Text
+                      {addon.subtitle}
+                    </Text>
+                  </View>
+                  <Image
+                    source={{
+                      uri: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=100&h=100&fit=crop',
+                    }}
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: 10,
+                      marginLeft: 12,
+                    }}
+                    resizeMode="cover"
+                  />
+                </View>
+
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    marginTop: 8,
+                    backgroundColor: addon.detailsBg,
+                    padding: 8,
+                    borderRadius: 10,
+                  }}
+                >
+                  {addon.details.map((d, j) => (
+                    <View key={j} style={{ alignItems: 'center', flex: 1 }}>
+                      <View
                         style={{
-                          color: '#1F8A70',
-                          fontWeight: '600',
-                          fontSize: 14,
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginBottom: 2,
                         }}
                       >
-                        Add
+                        {j === 0 ? (
+                          <Image
+                            source={require('./../assets/local.png')}
+                            style={{ width: 24, height: 24 }}
+                          />
+                        ) : j === 1 ? (
+                          <Image
+                            source={require('./../assets/duration.png')}
+                            style={{ width: 24, height: 24 }}
+                          />
+                        ) : (
+                          <Image
+                            source={require('./../assets/reel.png')}
+                            style={{ width: 24, height: 24 }}
+                          />
+                        )}
+                      </View>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: '#334155',
+                          textAlign: 'center',
+                          width: '100%',
+                        }}
+                      >
+                        {d}
                       </Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TouchableOpacity
+                    </View>
+                  ))}
+                </View>
+
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: 12,
+                  }}
+                >
+                  <Text
                     style={{
-                      marginTop: 8,
-                      alignItems: 'center',
-                      backgroundColor: i % 2 === 0 ? '#E7EDFA' : '#E7F2EE',
+                      fontSize: 14,
+                      fontWeight: '500',
+                      color: '#111827',
                     }}
-                    className="w-[100%] h-[36px] flex items-center justify-center rounded-3xl"
+                  >
+                    Just{' '}
+                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>
+                      ₹{addon.price.toLocaleString('en-IN')}
+                    </Text>
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedAddons(prev => {
+                        const exists = prev.find(a => a.name === addon.name);
+                        if (exists) {
+                          return prev.filter(a => a.name !== addon.name);
+                        }
+                        return [...prev, { name: addon.name, price: addon.price }];
+                      });
+                    }}
+                    style={{
+                      backgroundColor: selectedAddons.find(a => a.name === addon.name) ? '#1F8A70' : '#E6F4EF',
+                      paddingHorizontal: 24,
+                      paddingVertical: 8,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: '#1F8A70',
+                      width: 126,
+                      height: 40,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
                   >
                     <Text
                       style={{
-                        color: '#000',
-                        fontSize: 13,
-                        fontWeight: '500',
-                        textDecorationLine: 'underline',
+                        color: selectedAddons.find(a => a.name === addon.name) ? '#FFFFFF' : '#1F8A70',
+                        fontWeight: '600',
+                        fontSize: 14,
                       }}
                     >
-                      Watch Demo Videos
+                      {selectedAddons.find(a => a.name === addon.name) ? 'Added ✓' : 'Add'}
                     </Text>
                   </TouchableOpacity>
                 </View>
-              ))}
-            </View>
-          )}
+                <TouchableOpacity
+                  style={{
+                    marginTop: 8,
+                    alignItems: 'center',
+                    backgroundColor: addon.detailsBg,
+                    height: 36,
+                    justifyContent: 'center',
+                    borderRadius: 18,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#000',
+                      fontSize: 13,
+                      fontWeight: '500',
+                      textDecorationLine: 'underline',
+                    }}
+                  >
+                    Watch Demo Videos
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
 
           {/* Divider */}
           <View
@@ -1319,16 +1383,9 @@ const DestinationDetailScreen = () => {
           {/* Policies */}
           <View
             style={{
-              backgroundColor: '#fff',
-              borderRadius: 16,
-              marginHorizontal: 16,
+              marginHorizontal: 20,
               marginBottom: 100,
-              padding: 16,
-              elevation: 2,
-              shadowColor: '#000',
-              shadowOpacity: 0.04,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 2 },
+              paddingVertical: 16,
             }}
           >
             <TouchableOpacity
@@ -1336,7 +1393,7 @@ const DestinationDetailScreen = () => {
                 flexDirection: 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: 12,
+                marginBottom: 16,
               }}
               onPress={() => setShowPolicies(!showPolicies)}
             >
@@ -1357,10 +1414,10 @@ const DestinationDetailScreen = () => {
                   <>
                     <Text
                       style={{
-                        fontSize: 14,
-                        fontWeight: '600',
+                        fontSize: 16,
+                        fontWeight: '700',
                         color: '#111827',
-                        marginBottom: 8,
+                        marginBottom: 10,
                       }}
                     >
                       Cancellation Policy
@@ -1374,19 +1431,21 @@ const DestinationDetailScreen = () => {
                           style={{
                             flexDirection: 'row',
                             alignItems: 'flex-start',
-                            marginBottom: 6,
+                            marginBottom: 10,
+                            paddingLeft: 4,
                           }}
                         >
                           <Check
                             size={14}
-                            color="#1F8A70"
-                            style={{ marginTop: 2 }}
+                            color="#9CA3AF"
+                            style={{ marginTop: 3 }}
                           />
                           <Text
                             style={{
-                              marginLeft: 8,
-                              fontSize: 13,
-                              color: '#374151',
+                              marginLeft: 10,
+                              fontSize: 15,
+                              color: '#1E2A45',
+                              fontWeight: '500',
                               flex: 1,
                             }}
                           >
@@ -1399,10 +1458,10 @@ const DestinationDetailScreen = () => {
                   <>
                     <Text
                       style={{
-                        fontSize: 14,
-                        fontWeight: '600',
+                        fontSize: 16,
+                        fontWeight: '700',
                         color: '#111827',
-                        marginBottom: 8,
+                        marginBottom: 10,
                       }}
                     >
                       Cancellation Policy
@@ -1411,15 +1470,17 @@ const DestinationDetailScreen = () => {
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        marginBottom: 6,
+                        marginBottom: 10,
+                        paddingLeft: 4,
                       }}
                     >
-                      <Check size={14} color="#1F8A70" />
+                      <Check size={14} color="#9CA3AF" />
                       <Text
                         style={{
-                          marginLeft: 8,
-                          fontSize: 13,
-                          color: '#374151',
+                          marginLeft: 10,
+                          fontSize: 15,
+                          color: '#1E2A45',
+                          fontWeight: '500',
                         }}
                       >
                         {destination.policies?.cancellationPolicy ||
@@ -1430,34 +1491,36 @@ const DestinationDetailScreen = () => {
                 )}
 
                 {policies.refund ? (
-                  <View style={{ marginTop: 12 }}>
+                  <View style={{ marginTop: 16 }}>
                     <Text
                       style={{
-                        fontSize: 14,
-                        fontWeight: '600',
+                        fontSize: 16,
+                        fontWeight: '700',
                         color: '#111827',
-                        marginBottom: 8,
+                        marginBottom: 10,
                       }}
                     >
-                      Refund Policy
+                      Payment Policy
                     </Text>
                     <View
                       style={{
                         flexDirection: 'row',
                         alignItems: 'flex-start',
-                        marginBottom: 6,
+                        marginBottom: 10,
+                        paddingLeft: 4,
                       }}
                     >
                       <Check
                         size={14}
-                        color="#1F8A70"
-                        style={{ marginTop: 2 }}
+                        color="#9CA3AF"
+                        style={{ marginTop: 3 }}
                       />
                       <Text
                         style={{
-                          marginLeft: 8,
-                          fontSize: 13,
-                          color: '#374151',
+                          marginLeft: 10,
+                          fontSize: 15,
+                          color: '#1E2A45',
+                          fontWeight: '500',
                           flex: 1,
                         }}
                       >
@@ -1520,26 +1583,15 @@ const DestinationDetailScreen = () => {
         }}
       >
         <View>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>
-            <Text style={{ fontSize: 11, color: '#9CA3AF' }}>From </Text>
+          <Text style={{ fontSize: 12, color: '#6B7280' }}>From</Text>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>
             {dates.length > 0 && selectedDate < dates.length
               ? dates[selectedDate].price
               : priceStr}
-            <Text style={{ fontSize: 12, fontWeight: '400', color: '#6B7280' }}>
-              {' '}
-              /Guest
+            <Text style={{ fontSize: 13, fontWeight: '400', color: '#6B7280' }}>
+              {' '}/Guest
             </Text>
           </Text>
-          {dates.length > 0 &&
-            selectedDate < dates.length &&
-            dates[selectedDate].seatsLeft <= 5 &&
-            !dates[selectedDate].isFull && (
-              <Text
-                style={{ fontSize: 11, color: '#F97316', fontWeight: '600' }}
-              >
-                Only {dates[selectedDate].seatsLeft} seats left
-              </Text>
-            )}
         </View>
         <TouchableOpacity
           style={{
@@ -1553,17 +1605,16 @@ const DestinationDetailScreen = () => {
           }}
           onPress={() => {
             if (dates.length === 0) {
-              // No batches — navigate to booking screen as fallback
-              navigation.navigate('Booking', { destination });
+              navigation.navigate('Booking', { destination, selectedAddons });
               return;
             }
             const selected = dates[selectedDate];
             if (selected?.isFull) return;
-            // Navigate to booking with batch info
             navigation.navigate('Booking', {
               destination,
               batchId: selected?.batchId,
               selectedBatch: batches[selectedDate],
+              selectedAddons,
             });
           }}
         >

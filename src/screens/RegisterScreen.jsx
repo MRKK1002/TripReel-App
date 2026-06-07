@@ -471,33 +471,10 @@ const RegisterScreen = () => {
                     marginBottom: 8,
                   }}
                 >
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 12,
-                      backgroundColor: '#1F8A70',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 10,
-                    }}
-                  >
-                    <Text
-                      style={{ color: '#fff', fontSize: 20, fontWeight: '800' }}
-                    >
-                      T
-                    </Text>
-                  </View>
-                  <Text
-                    style={{
-                      fontSize: 26,
-                      fontWeight: '800',
-                      color: '#111827',
-                      letterSpacing: -0.5,
-                    }}
-                  >
-                    TripReel
-                  </Text>
+                  <Image
+                    source={require('../assets/tripreellogo.png')}
+                    style={{ width: 160, height: 50, resizeMode: 'contain' }}
+                  />
                 </View>
                 <Text
                   style={{

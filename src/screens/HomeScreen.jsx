@@ -80,7 +80,7 @@ const PackageCard = ({ item, onPress, onWishlist, inWishlist }) => {
     resolveImage(item.image_url || item.image) ||
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop';
 
-  const price = item.pricing?.adultPrice || item.price || 0;
+  const price = item.batchPrice || item.pricing?.adultPrice || item.price || 0;
   const priceText = price ? `₹${Number(price).toLocaleString('en-IN')}` : null;
 
   // Popular badge — earned via bookings or good rating (shows everywhere)
@@ -229,7 +229,7 @@ const DestCard = ({ item, onPress, onWishlist, inWishlist }) => {
   const imageUri =
     resolveImage(item.image_url || item.image) ||
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop';
-  const price = item.pricing?.adultPrice || item.price || 0;
+  const price = item.batchPrice || item.pricing?.adultPrice || item.price || 0;
   // Popular badge — earned via bookings or good rating
   const showPopularBadge =
     (item.bookingCount || 0) >= 1 ||

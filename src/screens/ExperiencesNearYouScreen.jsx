@@ -128,7 +128,8 @@ const ExperiencesNearYouScreen = () => {
     const imageUri =
       resolveImage(item.image_url || item.image) ||
       'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=600&h=400&fit=crop';
-    const price = item.pricing?.adultPrice || item.price || 0;
+    const price =
+      item.batchPrice || item.pricing?.adultPrice || item.price || 0;
     const priceLabel = price
       ? `From ₹${Number(price).toLocaleString('en-IN')}/guest`
       : '';

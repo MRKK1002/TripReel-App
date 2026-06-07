@@ -118,11 +118,12 @@ const CuratedPackagesScreen = () => {
     const discountPrice = item.pricing?.discountPrice;
     const adultPrice = item.pricing?.adultPrice;
     const basePrice = item.price;
-    const displayPrice = discountPrice || adultPrice || basePrice || 0;
+    const displayPrice =
+      item.batchPrice || discountPrice || adultPrice || basePrice || 0;
     const priceLabel =
       item.priceLabel && isNaN(Number(item.priceLabel))
         ? item.priceLabel
-        : `From ₹${Number(displayPrice).toLocaleString('en-IN')}/guest`;
+        : `From \u20B9${Number(displayPrice).toLocaleString('en-IN')}/guest`;
 
     // Resolve image URL
     const imageUri =

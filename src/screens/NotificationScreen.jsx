@@ -76,8 +76,15 @@ const NotificationScreen = () => {
   useFocusEffect(
     useCallback(() => {
       fetchNotifications();
-      // Mark all as read when viewing
-      notificationsAPI.markAllRead().catch(() => {});
+      // Mark all as read after a short delay (so user sees unread state first)
+      setTimeout(() => {
+        notificationsAPI
+          .markAllRead()
+          .then(() => {
+            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          })
+          .catch(() => {});
+      }, 2000);
     }, [fetchNotifications]),
   );
 

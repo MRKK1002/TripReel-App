@@ -79,7 +79,8 @@ const PopularDestinationScreen = () => {
   const renderItem = ({ item }) => {
     const id = item._id || item.id;
     const title = item.title || item.name || '';
-    const price = item.pricing?.adultPrice || item.price || 0;
+    const price =
+      item.batchPrice || item.pricing?.adultPrice || item.price || 0;
     const priceLabel = price
       ? `From ₹${Number(price).toLocaleString('en-IN')}/guest`
       : '';

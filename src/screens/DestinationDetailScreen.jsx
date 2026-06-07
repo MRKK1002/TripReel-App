@@ -131,7 +131,10 @@ const DestinationDetailScreen = () => {
   // Build image list: cover first + all operator-uploaded images, fully resolved
   const rawImages = [destination?.image_url, ...(destination?.images || [])];
   const images = rawImages.map(resolveUrl).filter(Boolean);
-  const priceStr = `₹${destination.price?.toLocaleString('en-IN') ?? '12,999'}`;
+  const priceStr = `\u20B9${
+    (destination.batchPrice || destination.price)?.toLocaleString('en-IN') ??
+    '12,999'
+  }`;
 
   // Dates come from real batches now — compact format: "12-14 Feb 2026"
   const dates = batches.map((b, i) => {
@@ -499,12 +502,21 @@ const DestinationDetailScreen = () => {
                     adjustsFontSizeToFit
                     minimumFontScale={0.7}
                   >
-                    {destination.priceLabel}
+                    {dates.length > 0 && selectedDate < dates.length
+                      ? dates[selectedDate].price
+                      : destination.batchPrice
+                      ? `\u20B9${Number(destination.batchPrice).toLocaleString(
+                          'en-IN',
+                        )}`
+                      : destination.priceLabel ||
+                        `\u20B9${
+                          destination.price?.toLocaleString('en-IN') || '0'
+                        }`}
                   </Text>
                   <Text
                     style={{ fontSize: 12, color: '#64748B', marginTop: 1 }}
                   >
-                    Price
+                    Price / Guest
                   </Text>
                 </View>
               </View>
@@ -731,7 +743,12 @@ const DestinationDetailScreen = () => {
                 style={{ marginTop: 10 }}
               >
                 <Text
-                  style={{ color: '#111827', fontSize: 15, fontWeight: '700', textDecorationLine: 'underline' }}
+                  style={{
+                    color: '#111827',
+                    fontSize: 15,
+                    fontWeight: '700',
+                    textDecorationLine: 'underline',
+                  }}
                 >
                   {showFullAbout ? 'Read Less' : 'Read More'}
                 </Text>
@@ -946,7 +963,8 @@ const DestinationDetailScreen = () => {
                     onPress={() => !d.isFull && setSelectedDate(i)}
                     style={{
                       width: 160,
-                      borderColor: selectedDate === i ? '#1F8A70' : 'transparent',
+                      borderColor:
+                        selectedDate === i ? '#1F8A70' : 'transparent',
                       borderWidth: 0,
                       backgroundColor: d.isFull
                         ? '#F1F5F9'
@@ -1082,11 +1100,19 @@ const DestinationDetailScreen = () => {
               <>
                 {(() => {
                   const allItems = [
-                    ...(destination.inclusions || []).map(item => ({ type: 'inc', text: item })),
-                    ...(destination.exclusions || []).map(item => ({ type: 'exc', text: item })),
+                    ...(destination.inclusions || []).map(item => ({
+                      type: 'inc',
+                      text: item,
+                    })),
+                    ...(destination.exclusions || []).map(item => ({
+                      type: 'exc',
+                      text: item,
+                    })),
                   ];
                   const showAll = showMoreInclusions;
-                  const visibleItems = showAll ? allItems : allItems.slice(0, 4);
+                  const visibleItems = showAll
+                    ? allItems
+                    : allItems.slice(0, 4);
                   return (
                     <>
                       {visibleItems.map((item, i) => (
@@ -1105,7 +1131,12 @@ const DestinationDetailScreen = () => {
                             <X size={14} color="#EF4444" />
                           )}
                           <Text
-                            style={{ marginLeft: 10, fontSize: 15, color: '#1E2A45', fontWeight: '500' }}
+                            style={{
+                              marginLeft: 10,
+                              fontSize: 15,
+                              color: '#1E2A45',
+                              fontWeight: '500',
+                            }}
                           >
                             {item.text}
                           </Text>
@@ -1113,7 +1144,9 @@ const DestinationDetailScreen = () => {
                       ))}
                       {allItems.length > 4 && (
                         <TouchableOpacity
-                          onPress={() => setShowMoreInclusions(!showMoreInclusions)}
+                          onPress={() =>
+                            setShowMoreInclusions(!showMoreInclusions)
+                          }
                           style={{
                             backgroundColor: '#F1F5F9',
                             borderRadius: 10,
@@ -1169,7 +1202,12 @@ const DestinationDetailScreen = () => {
             >
               {'Add-ons - '}
               <Text
-                style={{ fontSize: 18, fontWeight: '400', color: '#111827', fontStyle: 'italic' }}
+                style={{
+                  fontSize: 18,
+                  fontWeight: '400',
+                  color: '#111827',
+                  fontStyle: 'italic',
+                }}
               >
                 Make your trip memorable
               </Text>
@@ -1307,7 +1345,13 @@ const DestinationDetailScreen = () => {
                     }}
                   >
                     Just{' '}
-                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>
+                    <Text
+                      style={{
+                        fontSize: 20,
+                        fontWeight: '700',
+                        color: '#111827',
+                      }}
+                    >
                       ₹{addon.price.toLocaleString('en-IN')}
                     </Text>
                   </Text>
@@ -1318,11 +1362,18 @@ const DestinationDetailScreen = () => {
                         if (exists) {
                           return prev.filter(a => a.name !== addon.name);
                         }
-                        return [...prev, { name: addon.name, price: addon.price }];
+                        return [
+                          ...prev,
+                          { name: addon.name, price: addon.price },
+                        ];
                       });
                     }}
                     style={{
-                      backgroundColor: selectedAddons.find(a => a.name === addon.name) ? '#1F8A70' : '#E6F4EF',
+                      backgroundColor: selectedAddons.find(
+                        a => a.name === addon.name,
+                      )
+                        ? '#1F8A70'
+                        : '#E6F4EF',
                       paddingHorizontal: 24,
                       paddingVertical: 8,
                       borderRadius: 8,
@@ -1336,12 +1387,16 @@ const DestinationDetailScreen = () => {
                   >
                     <Text
                       style={{
-                        color: selectedAddons.find(a => a.name === addon.name) ? '#FFFFFF' : '#1F8A70',
+                        color: selectedAddons.find(a => a.name === addon.name)
+                          ? '#FFFFFF'
+                          : '#1F8A70',
                         fontWeight: '600',
                         fontSize: 14,
                       }}
                     >
-                      {selectedAddons.find(a => a.name === addon.name) ? 'Added ✓' : 'Add'}
+                      {selectedAddons.find(a => a.name === addon.name)
+                        ? 'Added ✓'
+                        : 'Add'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1589,7 +1644,8 @@ const DestinationDetailScreen = () => {
               ? dates[selectedDate].price
               : priceStr}
             <Text style={{ fontSize: 13, fontWeight: '400', color: '#6B7280' }}>
-              {' '}/Guest
+              {' '}
+              /Guest
             </Text>
           </Text>
         </View>

@@ -1,6 +1,9 @@
 package com.tripreel.app
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -33,6 +36,22 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    createNotificationChannel()
     loadReactNative(this)
+  }
+
+  private fun createNotificationChannel() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val channel = NotificationChannel(
+        "tripreel_notifications",
+        "TripReel Notifications",
+        NotificationManager.IMPORTANCE_HIGH
+      ).apply {
+        description = "Trip reminders, booking updates and alerts"
+        enableVibration(true)
+      }
+      val manager = getSystemService(NotificationManager::class.java)
+      manager.createNotificationChannel(channel)
+    }
   }
 }

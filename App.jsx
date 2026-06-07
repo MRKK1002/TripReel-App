@@ -1,4 +1,11 @@
-import { View, Text, Platform, StatusBar, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  Platform,
+  StatusBar,
+  Dimensions,
+  PermissionsAndroid,
+} from 'react-native';
 import './global.css';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -8,7 +15,9 @@ import { AuthProvider } from './src/context/AuthContext';
 import { WishlistProvider } from './src/context/WishlistContext';
 import Feather from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useEffect, useRef } from 'react';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import messaging from '@react-native-firebase/messaging';
 
 import SplashScreen from './src/screens/SplashScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -38,7 +47,6 @@ import {
   Home,
   ShoppingCart,
 } from 'lucide-react-native';
-import { useRef } from 'react';
 import OffersScreen from './src/screens/OffersScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
@@ -215,12 +223,75 @@ function BottomTabs() {
 }
 
 export default function App() {
+  const navigationRef = useRef(null);
+
+  // Request notification permission on first launch
+  useEffect(() => {
+    async function requestNotifPermission() {
+      try {
+        if (Platform.OS === 'android' && Platform.Version >= 33) {
+          await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+          );
+        }
+      } catch {}
+    }
+    requestNotifPermission();
+  }, []);
+
+  // Handle notification tap — navigate to correct screen
+  useEffect(() => {
+    // When app is in background and user taps notification
+    const unsubscribeOpened = messaging().onNotificationOpenedApp(
+      remoteMessage => {
+        const data = remoteMessage?.data;
+        if (data?.screen && navigationRef.current) {
+          if (data.screen === 'BookingDetails' && data.bookingId) {
+            navigationRef.current.navigate('BookingDetails', {
+              bookingId: data.bookingId,
+            });
+          } else if (data.screen === 'ReviewScreen' && data.bookingId) {
+            navigationRef.current.navigate('BookingDetails', {
+              bookingId: data.bookingId,
+              openReview: true,
+            });
+          } else if (data.screen === 'MyTrip') {
+            navigationRef.current.navigate('Main', { screen: 'MyTrip' });
+          }
+        }
+      },
+    );
+
+    // When app is killed and user taps notification to open
+    messaging()
+      .getInitialNotification()
+      .then(remoteMessage => {
+        if (remoteMessage?.data?.screen && navigationRef.current) {
+          const data = remoteMessage.data;
+          setTimeout(() => {
+            if (data.screen === 'BookingDetails' && data.bookingId) {
+              navigationRef.current?.navigate('BookingDetails', {
+                bookingId: data.bookingId,
+              });
+            } else if (data.screen === 'ReviewScreen' && data.bookingId) {
+              navigationRef.current?.navigate('BookingDetails', {
+                bookingId: data.bookingId,
+                openReview: true,
+              });
+            }
+          }, 1500); // delay to let nav mount
+        }
+      });
+
+    return unsubscribeOpened;
+  }, []);
+
   return (
     <SafeAreaProvider>
       <AuthProvider>
         <WishlistProvider>
           {/* <StatusBar backgroundColor="#000" barStyle="light-content" /> */}
-          <NavigationContainer>
+          <NavigationContainer ref={navigationRef}>
             <Stack.Navigator initialRouteName="Splash">
               <Stack.Screen
                 name="Splash"

@@ -33,6 +33,7 @@ import {
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
+import CampaignBanner from '../components/CampaignBanner';
 import { useRecentlyViewed, timeAgo } from '../hooks/useRecentlyViewed';
 import { useLocation } from '../hooks/useLocation';
 import './../../android/app/src/utils/globalFont.js';
@@ -831,6 +832,9 @@ const HomeScreen = () => {
           </View>
         ) : null}
       </Modal>
+
+      {/* Campaign Bottom Sheet */}
+      <CampaignBanner navigation={navigation} />
     </SafeAreaProvider>
   );
 };

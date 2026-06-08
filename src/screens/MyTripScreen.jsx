@@ -254,6 +254,30 @@ const BookingCard = ({ booking, onRate, onViewDetails }) => {
             </Text>
           </View>
         )}
+        {days !== null && days === 0 && booking.status === 'CONFIRMED' && (
+          <View style={[styles.countdownBadge, { backgroundColor: '#DCFCE7' }]}>
+            <Text style={[styles.countdownText, { color: '#16A34A' }]}>
+              Your trip is TODAY!
+            </Text>
+          </View>
+        )}
+        {days !== null &&
+          days < 0 &&
+          booking.status === 'CONFIRMED' &&
+          endDate &&
+          new Date() <= new Date(endDate) && (
+            <View
+              style={[styles.countdownBadge, { backgroundColor: '#DBEAFE' }]}
+            >
+              <Text style={[styles.countdownText, { color: '#2563EB' }]}>
+                Day {Math.abs(days) + 1} of{' '}
+                {Math.ceil(
+                  (new Date(endDate) - new Date(startDate)) /
+                    (1000 * 60 * 60 * 24),
+                ) + 1}
+              </Text>
+            </View>
+          )}
         {booking.status === 'COMPLETED' && (
           <View style={[styles.countdownBadge, { backgroundColor: '#EDE9FE' }]}>
             <Text style={[styles.countdownText, { color: '#6366F1' }]}>

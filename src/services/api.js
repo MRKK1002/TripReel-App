@@ -166,4 +166,10 @@ export const chatAPI = {
     api.post(`/chat/${conversationId}/messages`, data),
 };
 
+// ── Campaigns ─────────────────────────────────────────────────────────────────
+export const campaignsAPI = {
+  getActive: () => api.get('/campaigns/active'),
+  trackClick: id => api.post(`/campaigns/click/${id}`),
+};
+
 export default api;

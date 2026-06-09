@@ -260,7 +260,9 @@ const BookingDetailsScreen = () => {
       label: 'Tour operator',
       sublabel: 'Tour Operator accepted booking',
       status:
-        booking.status === 'CONFIRMED' || booking.status === 'COMPLETED'
+        booking.status === 'CONFIRMED' ||
+        booking.status === 'COMPLETED' ||
+        booking.status === 'CANCELLED'
           ? 'done'
           : 'inprogress',
       date: createdAt,

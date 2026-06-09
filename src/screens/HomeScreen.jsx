@@ -34,6 +34,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import CampaignBanner from '../components/CampaignBanner';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRecentlyViewed, timeAgo } from '../hooks/useRecentlyViewed';
 import { useLocation } from '../hooks/useLocation';
 import './../../android/app/src/utils/globalFont.js';
@@ -529,6 +530,18 @@ const HomeScreen = () => {
         nearbyPkgs.length > 0 ? nearbyPkgs.slice(0, 8) : allPkgs.slice(0, 8),
       );
 
+      // Cache home data for instant load next time
+      const cacheData = {
+        categoryMap: map,
+        popularDests: popularPkgs,
+        nearYouItems:
+          nearbyPkgs.length > 0 ? nearbyPkgs.slice(0, 8) : allPkgs.slice(0, 8),
+      };
+      AsyncStorage.setItem(
+        '@tripreel_home_cache',
+        JSON.stringify(cacheData),
+      ).catch(() => {});
+
       // ── Experience Reels — show state-filtered, fallback to all ─────────
       const stateReels = reelRes.data?.reels || [];
       if (stateReels.length > 0) {
@@ -551,6 +564,23 @@ const HomeScreen = () => {
       setRefreshing(false);
     }
   }, [user?.state, user?.country, gpsState, gpsCountry]);
+
+  // Load cached home data instantly on mount (stale-while-revalidate)
+  useEffect(() => {
+    AsyncStorage.getItem('@tripreel_home_cache')
+      .then(raw => {
+        if (raw && loading) {
+          try {
+            const cached = JSON.parse(raw);
+            if (cached.categoryMap) setCategoryMap(cached.categoryMap);
+            if (cached.popularDests) setPopularDests(cached.popularDests);
+            if (cached.nearYouItems) setNearYouItems(cached.nearYouItems);
+            setLoading(false); // Show cached data immediately
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Re-fetch when GPS location becomes available (may fire after initial render)
   useEffect(() => {

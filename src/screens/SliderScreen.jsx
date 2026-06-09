@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import Carousel from 'react-native-reanimated-carousel';
 import LottieView from 'lottie-react-native';
+import { appScreensAPI, SERVER_URL } from '../services/api';
 import loader from './../assets/LoadingTravel.json';
 const { width, height } = Dimensions.get('window');
 
@@ -27,40 +28,64 @@ const SLIDER_IMAGES = [
 const SliderScreen = ({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showLoader, setShowLoader] = useState(false);
+  const [dynamicSlides, setDynamicSlides] = useState(null);
   const carouselRef = useRef(null);
   const navigationTimeoutRef = useRef(null);
 
-const slides = [
-  {
-    id: 1,
-    image: SLIDER_IMAGES[0],
-    title: 'Escape to Thailand',
-    description:
-      'Uncover golden temples, turquoise waters, and flavors that awaken your senses in the Land of Smiles.',
-  },
-  {
-    id: 2,
-    image: SLIDER_IMAGES[1],
-    title: 'Travel With Your Tribe',
-    description:
-      'Meet fellow explorers, share journeys, and turn every trip into a story worth telling.',
-  },
-  {
-    id: 3,
-    image: SLIDER_IMAGES[2],
-    title: 'Adventure, Your Way',
-    description:
-      'Whether it’s mountain trails or hidden beaches, design the adventure that speaks to your soul.',
-  },
-  {
-    id: 4,
-    image: SLIDER_IMAGES[3],
-    title: 'Packages Made for You',
-    description:
-      'From luxury escapes to budget-friendly getaways — find the perfect travel deal crafted just for you.',
-  },
-];
+  // Fetch dynamic slides from API
+  useEffect(() => {
+    appScreensAPI
+      .get()
+      .then(res => {
+        const apiSlides = res.data?.slides || [];
+        if (apiSlides.length > 0) {
+          setDynamicSlides(
+            apiSlides.map((s, i) => ({
+              id: i + 1,
+              image: {
+                uri: s.imageUrl.startsWith('http')
+                  ? s.imageUrl
+                  : `${SERVER_URL}${s.imageUrl}`,
+              },
+              title: s.title || '',
+              description: s.description || '',
+            })),
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
+  const slides = [
+    {
+      id: 1,
+      image: SLIDER_IMAGES[0],
+      title: 'Escape to Thailand',
+      description:
+        'Uncover golden temples, turquoise waters, and flavors that awaken your senses in the Land of Smiles.',
+    },
+    {
+      id: 2,
+      image: SLIDER_IMAGES[1],
+      title: 'Travel With Your Tribe',
+      description:
+        'Meet fellow explorers, share journeys, and turn every trip into a story worth telling.',
+    },
+    {
+      id: 3,
+      image: SLIDER_IMAGES[2],
+      title: 'Adventure, Your Way',
+      description:
+        'Whether it’s mountain trails or hidden beaches, design the adventure that speaks to your soul.',
+    },
+    {
+      id: 4,
+      image: SLIDER_IMAGES[3],
+      title: 'Packages Made for You',
+      description:
+        'From luxury escapes to budget-friendly getaways — find the perfect travel deal crafted just for you.',
+    },
+  ];
 
   // Reset loader when screen comes into focus
   useFocusEffect(
@@ -105,12 +130,13 @@ const slides = [
   );
 
   const handleNext = useCallback(() => {
+    const activeSlides = dynamicSlides || slides;
     const nextIndex = currentIndex + 1;
-    if (nextIndex < slides.length) {
+    if (nextIndex < activeSlides.length) {
       setCurrentIndex(nextIndex);
       carouselRef.current?.scrollTo({ index: nextIndex });
     }
-  }, [currentIndex, slides.length]);
+  }, [currentIndex, dynamicSlides]);
 
   // Cleanup timeout on unmount
   React.useEffect(() => {
@@ -150,7 +176,7 @@ const slides = [
       {/* Main Content */}
       <View style={styles.content}>
         {/* Skip button at top right */}
-        {currentIndex !== slides.length - 1 && (
+        {currentIndex !== (dynamicSlides || slides).length - 1 && (
           <TouchableOpacity
             style={styles.skipButton}
             onPress={() => navigateWithLoader('Main', { screen: 'Home' })}
@@ -167,7 +193,7 @@ const slides = [
             autoPlay={false}
             width={width}
             height={height * 0.6}
-            data={slides}
+            data={dynamicSlides || slides}
             defaultIndex={currentIndex}
             scrollAnimationDuration={400}
             onSnapToItem={index => setCurrentIndex(index)}
@@ -184,7 +210,7 @@ const slides = [
 
           {/* Pagination Dots */}
           <View style={styles.pagination}>
-            {slides.map((_, index) => (
+            {(dynamicSlides || slides).map((_, index) => (
               <View
                 key={index}
                 style={[
@@ -200,7 +226,7 @@ const slides = [
 
         {/* Bottom Section with Button and Registration */}
         <View style={styles.bottomSection}>
-          {currentIndex === slides.length - 1 ? (
+          {currentIndex === (dynamicSlides || slides).length - 1 ? (
             <>
               <TouchableOpacity
                 style={styles.getStartedButton}
@@ -370,7 +396,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1b2b51',
   },
   loaderText: {
-    marginTop: -10, 
+    marginTop: -10,
     fontSize: 16,
     color: '#1b2b51',
     textAlign: 'center',

@@ -49,7 +49,9 @@ export const initiateRazorpayPayment = async ({
     internalOrderId = orderRes.data.orderId;
   } catch (err) {
     // Backend endpoint not ready yet — proceed without order_id (test mode)
-    console.log('Backend order creation not available, proceeding in test mode');
+    console.log(
+      'Backend order creation not available, proceeding in test mode',
+    );
   }
 
   // Step 2: Open Razorpay Checkout
@@ -97,12 +99,17 @@ export const initiateRazorpayPayment = async ({
       ...verifyRes.data,
     };
   } catch (verifyErr) {
-    // If verify endpoint doesn't exist yet, treat payment as successful (test mode)
-    console.log('Backend verify not available, using payment result directly');
+    // Payment was collected by Razorpay but backend verification failed
+    // This is a critical state — payment exists but booking may not
+    console.warn(
+      'Payment verify failed:',
+      verifyErr?.response?.data?.message || verifyErr.message,
+    );
     return {
-      success: true,
+      success: false,
       paymentId: paymentResult.razorpay_payment_id,
-      testMode: true,
+      error:
+        'Payment received but booking creation failed. Please contact support with your payment ID.',
     };
   }
 };

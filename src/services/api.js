@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Auto-detect: if the app can reach local backend, use it; otherwise use live
-const LOCAL_URL = 'http://192.168.1.27:5001';
+const LOCAL_URL = 'http://192.168.0.127:5001';
 const LIVE_URL = 'https://tripreel-backend.onrender.com';
 
 // In development (debug mode), use local. In release/production, use live.
@@ -176,6 +176,11 @@ export const chatAPI = {
 export const campaignsAPI = {
   getActive: () => api.get('/campaigns/active'),
   trackClick: id => api.post(`/campaigns/click/${id}`),
+};
+
+// ── App Screens ───────────────────────────────────────────────────────────────
+export const appScreensAPI = {
+  get: () => api.get('/app-screens'),
 };
 
 export default api;

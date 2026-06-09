@@ -31,6 +31,7 @@ import {
   SERVER_URL,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { initiateRazorpayPayment } from '../services/paymentService';
 import AppModal from '../components/AppModal';
 import './../../android/app/src/utils/globalFont.js';
 
@@ -278,10 +279,11 @@ const BookingScreen = () => {
   // ── Confirm booking ────────────────────────────────────────────────────────
   const handleConfirmBooking = async () => {
     if (!batchId) {
-      Alert.alert(
-        'No Batch Selected',
-        'Please go back and select a departure date.',
-      );
+      showAppModal({
+        variant: 'error',
+        title: 'No Batch Selected',
+        message: 'Please go back and select a departure date.',
+      });
       return;
     }
     if (totalSeats > seatsLeft) {
@@ -291,22 +293,44 @@ const BookingScreen = () => {
         message: 'Only ' + seatsLeft + ' seats available.',
       });
       return;
+    }
+
+    // Validate traveler details
+    const incomplete = travelers.some(t => !t.name?.trim() || !t.gender || !t.age);
+    if (incomplete) {
+      showAppModal({
+        variant: 'error',
+        title: 'Incomplete Details',
+        message: 'Please fill in name, gender, and age for all travelers.',
+      });
       return;
     }
 
     setBooking(true);
     try {
-      await tripBookingsAPI.create({
+      // ── Razorpay Payment Flow ──────────────────────────────────────────────
+      const paymentResult = await initiateRazorpayPayment({
+        amount: totalAmount,
         packageId: destination._id,
         batchId,
         seats: totalSeats,
-        travelers: travelers.map((t, i) => ({
+        couponCode: couponApplied ? couponCode : '',
+        travelers: travelers.map(t => ({
           name: t.name || '',
           gender: t.gender || '',
           age: Number(t.age) || 0,
         })),
-        couponCode: couponApplied ? couponCode : '',
+        user,
       });
+
+      if (!paymentResult.success) {
+        showAppModal({
+          variant: 'error',
+          title: 'Payment Verification Failed',
+          message: 'Payment was made but could not be verified. Please contact support.',
+        });
+        return;
+      }
 
       // ── Book Snapja creator if Photographer/Reelmaker add-on selected ────
       if (routeAddons && routeAddons.length > 0) {
@@ -347,7 +371,6 @@ const BookingScreen = () => {
               }),
             });
           } catch (snapjaErr) {
-            // Don't fail the trip booking if Snapja booking fails
             console.log('Snapja booking failed for addon:', addon.name, snapjaErr);
           }
         }
@@ -355,8 +378,8 @@ const BookingScreen = () => {
 
       showAppModal({
         variant: 'success',
-        title: 'Booking Confirmed! ✓',
-        message: 'Your booking is confirmed. Check "My Trips" for details.',
+        title: 'Payment Successful! ✓',
+        message: `Payment of ₹${totalAmount.toLocaleString('en-IN')} completed. Your booking is confirmed!`,
         primaryLabel: 'Go to My Trips',
         onPrimaryPress: () => {
           closeAppModal();
@@ -364,11 +387,20 @@ const BookingScreen = () => {
         },
       });
     } catch (err) {
-      showAppModal({
-        variant: 'error',
-        title: 'Booking Failed',
-        message: err?.response?.data?.message || 'Please try again.',
-      });
+      // Razorpay sends error code 0 when user dismisses the checkout
+      if (err?.code === 0 || err?.description?.includes('cancelled')) {
+        showAppModal({
+          variant: 'error',
+          title: 'Payment Cancelled',
+          message: 'You cancelled the payment. No amount was charged.',
+        });
+      } else {
+        showAppModal({
+          variant: 'error',
+          title: 'Payment Failed',
+          message: err?.response?.data?.message || err?.description || 'Payment could not be processed. Please try again.',
+        });
+      }
     } finally {
       setBooking(false);
     }
@@ -1085,6 +1117,12 @@ const BookingScreen = () => {
                   'en-IN',
                 )})`}
                 value={`₹${childSubtotal.toLocaleString('en-IN')}`}
+              />
+            )}
+            {addonPrice > 0 && (
+              <PriceRow
+                label={`Add-ons (${routeAddons.map(a => a.name).join(', ')})`}
+                value={`₹${addonPrice.toLocaleString('en-IN')}`}
               />
             )}
             <PriceRow

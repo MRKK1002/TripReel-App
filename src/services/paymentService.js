@@ -31,6 +31,7 @@ export const initiateRazorpayPayment = async ({
   couponCode,
   travelers,
   user,
+  addonDays,
 }) => {
   let razorpayOrderId = null;
   let internalOrderId = null;
@@ -44,6 +45,7 @@ export const initiateRazorpayPayment = async ({
       seats,
       couponCode,
       travelers,
+      addonDays,
     });
     razorpayOrderId = orderRes.data.razorpayOrderId;
     internalOrderId = orderRes.data.orderId;
@@ -90,6 +92,7 @@ export const initiateRazorpayPayment = async ({
       seats,
       couponCode,
       travelers,
+      addonDays,
     });
 
     return {

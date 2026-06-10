@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react-native';
 import { tripBookingsAPI, reviewsAPI, SERVER_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(d) {
@@ -365,13 +366,34 @@ export default function MyTripScreen() {
   const fetchBookings = useCallback(async () => {
     try {
       const res = await tripBookingsAPI.getMy();
-      setBookings(res.data?.bookings || []);
+      const data = res.data?.bookings || [];
+      setBookings(data);
+      AsyncStorage.setItem('@cache_my_bookings', JSON.stringify(data)).catch(
+        () => {},
+      );
     } catch {
       setBookings([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+  }, []);
+
+  // Load cached bookings instantly on mount
+  useEffect(() => {
+    AsyncStorage.getItem('@cache_my_bookings')
+      .then(raw => {
+        if (raw && loading) {
+          try {
+            const cached = JSON.parse(raw);
+            if (cached?.length) {
+              setBookings(cached);
+              setLoading(false);
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useFocusEffect(

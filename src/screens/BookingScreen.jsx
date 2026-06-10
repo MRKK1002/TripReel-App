@@ -23,11 +23,13 @@ import {
   Tag,
   MapPin,
   Camera,
+  Video,
 } from 'lucide-react-native';
 import {
   tripBookingsAPI,
   couponsAPI,
   settingsAPI,
+  batchesAPI,
   SERVER_URL,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -51,15 +53,26 @@ const BookingScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
-  const { destination, selectedBatch, batchId, selectedAddons: routeAddons } = route.params || {};
+  const {
+    destination,
+    selectedBatch: initialBatch,
+    batchId: initialBatchId,
+    selectedAddons: routeAddons,
+  } = route.params || {};
 
   // ── State ──────────────────────────────────────────────────────────────────
+  const [selectedBatch, setSelectedBatch] = useState(initialBatch || null);
+  const [batchId, setBatchId] = useState(initialBatchId || null);
+  const [availableBatches, setAvailableBatches] = useState([]);
+  const [batchesLoading, setBatchesLoading] = useState(false);
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   // Traveler details — { name, gender, age } for each person
   const [travelers, setTravelers] = useState([
     { name: user?.name || '', gender: '', age: '' },
   ]);
+  // Addon day selection — { [addonName]: [dayIndex, ...] }
+  const [addonDays, setAddonDays] = useState({});
   // App modal (replaces Alert.alert)
   const [modal, setModal] = useState({ visible: false });
   const [couponCode, setCouponCode] = useState('');
@@ -79,6 +92,7 @@ const BookingScreen = () => {
   });
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [couponsLoading, setCouponsLoading] = useState(false);
@@ -86,9 +100,28 @@ const BookingScreen = () => {
   const [selectedAddon, setSelectedAddon] = useState(
     routeAddons && routeAddons.length > 0 ? routeAddons[0].name : null,
   );
-  const addonPrice = routeAddons && routeAddons.length > 0
-    ? routeAddons.reduce((sum, a) => sum + (a.price || 0), 0)
-    : 0;
+
+  // ── Dynamic addon pricing based on selected days ───────────────────────────
+  const itinerary = destination?.itinerary || [];
+  const outsideCityCharge = Number(destination?.outsideCityCharge) || 0;
+  const ADDON_BASE_PRICE = 2000; // Fixed base per service per day
+
+  // Calculate addon total: sum of (base + surcharge) for each selected day per addon
+  const computeAddonTotal = () => {
+    if (!routeAddons || routeAddons.length === 0) return 0;
+    let total = 0;
+    for (const addon of routeAddons) {
+      const days = addonDays[addon.name] || [];
+      for (const dayIdx of days) {
+        const dayInfo = itinerary[dayIdx];
+        const surcharge = dayInfo?.isOutsideCity ? outsideCityCharge : 0;
+        total += ADDON_BASE_PRICE + surcharge;
+      }
+    }
+    return total;
+  };
+
+  const addonPrice = computeAddonTotal();
 
   // Fetch GST + policies from admin settings
   useEffect(() => {
@@ -103,6 +136,17 @@ const BookingScreen = () => {
       })
       .catch(() => {});
   }, []);
+
+  // Fetch available batches for date change
+  useEffect(() => {
+    if (!destination?._id) return;
+    setBatchesLoading(true);
+    batchesAPI
+      .getForPackage(destination._id)
+      .then(res => setAvailableBatches(res.data?.batches || []))
+      .catch(() => setAvailableBatches([]))
+      .finally(() => setBatchesLoading(false));
+  }, [destination?._id]);
 
   // Sync travelers array when guest count changes
   useEffect(() => {
@@ -149,18 +193,21 @@ const BookingScreen = () => {
 
   const adultSubtotal = adultPrice * adults;
   const childSubtotal = childPrice * children;
-  const subtotal = adultSubtotal + childSubtotal + addonPrice;
+  const packageSubtotal = adultSubtotal + childSubtotal; // Package price only (discount applies here)
+  const subtotal = packageSubtotal + addonPrice; // Full subtotal including addons
   const gstAmount = Math.round((subtotal * gstPercent) / 100);
 
-  // Dynamically recalculate discount based on current subtotal and guest count
+  // Dynamically recalculate discount — applies only on package price, NOT addon charges
   let computedDiscount = 0;
   if (
     couponApplied &&
     totalSeats >= (appliedCouponMinGuests || 0) &&
-    (appliedCouponMinOrder <= 0 || subtotal >= appliedCouponMinOrder)
+    (appliedCouponMinOrder <= 0 || packageSubtotal >= appliedCouponMinOrder)
   ) {
     if (appliedCouponType === 'percentage') {
-      computedDiscount = Math.round((subtotal * appliedCouponValue) / 100);
+      computedDiscount = Math.round(
+        (packageSubtotal * appliedCouponValue) / 100,
+      );
       if (
         appliedCouponMaxDiscount > 0 &&
         computedDiscount > appliedCouponMaxDiscount
@@ -170,7 +217,7 @@ const BookingScreen = () => {
     } else {
       computedDiscount = appliedCouponValue;
     }
-    if (computedDiscount > subtotal) computedDiscount = subtotal;
+    if (computedDiscount > packageSubtotal) computedDiscount = packageSubtotal;
   } else if (couponApplied) {
     // Coupon conditions not met — discount is 0
     computedDiscount = 0;
@@ -296,7 +343,9 @@ const BookingScreen = () => {
     }
 
     // Validate traveler details
-    const incomplete = travelers.some(t => !t.name?.trim() || !t.gender || !t.age);
+    const incomplete = travelers.some(
+      t => !t.name?.trim() || !t.gender || !t.age,
+    );
     if (incomplete) {
       showAppModal({
         variant: 'error',
@@ -321,13 +370,15 @@ const BookingScreen = () => {
           age: Number(t.age) || 0,
         })),
         user,
+        addonDays,
       });
 
       if (!paymentResult.success) {
         showAppModal({
           variant: 'error',
           title: 'Payment Verification Failed',
-          message: 'Payment was made but could not be verified. Please contact support.',
+          message:
+            'Payment was made but could not be verified. Please contact support.',
         });
         return;
       }
@@ -344,34 +395,57 @@ const BookingScreen = () => {
           const serviceType = addon.name?.toLowerCase().includes('photographer')
             ? 'photographer'
             : 'reelmaker';
+          const selectedDayIndexes = addonDays[addon.name] || [];
 
-          try {
-            await fetch('https://api.snapja.com/api/tripreel/bookings', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': 'tripreel_snapja_2025',
-              },
-              body: JSON.stringify({
-                service_type: serviceType,
-                location: destination?.location || destination?.title || 'India',
-                price: addon.price || 2000,
-                duration: 1,
-                date: selectedBatch?.startDate
-                  ? new Date(selectedBatch.startDate).toISOString().split('T')[0]
-                  : new Date().toISOString().split('T')[0],
-                time: '10:00',
-                booking_type: 'scheduled',
-                customer_name: user?.name || travelers[0]?.name || 'TripReel User',
-                customer_phone: user?.phone || '',
-                customer_email: user?.email || '',
-                notes: `TripReel trip: ${destination?.title || 'Trip'} — ${addon.name}`,
-                timezone: 'Asia/Kolkata',
-                auto_confirm_payment: true,
-              }),
-            });
-          } catch (snapjaErr) {
-            console.log('Snapja booking failed for addon:', addon.name, snapjaErr);
+          for (const dayIdx of selectedDayIndexes) {
+            const dayInfo = itinerary[dayIdx];
+            // Calculate actual date: batch startDate + (dayNumber - 1) days
+            const batchStart = selectedBatch?.startDate
+              ? new Date(selectedBatch.startDate)
+              : new Date();
+            const actualDate = new Date(batchStart);
+            actualDate.setDate(actualDate.getDate() + dayIdx);
+            const location =
+              dayInfo?.pickupPoint ||
+              destination?.location ||
+              destination?.title ||
+              'India';
+
+            try {
+              await fetch('https://api.snapja.com/api/tripreel/bookings', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-API-Key': 'tripreel_snapja_2025',
+                },
+                body: JSON.stringify({
+                  service_type: serviceType,
+                  location,
+                  price: ADDON_BASE_PRICE,
+                  duration: 1,
+                  date: actualDate.toISOString().split('T')[0],
+                  time: '10:00',
+                  booking_type: 'scheduled',
+                  customer_name:
+                    user?.name || travelers[0]?.name || 'TripReel User',
+                  customer_phone: user?.phone || '',
+                  customer_email: user?.email || '',
+                  notes: `TripReel trip: ${destination?.title || 'Trip'} — ${
+                    addon.name
+                  } — Day ${dayIdx + 1}`,
+                  timezone: 'Asia/Kolkata',
+                  auto_confirm_payment: true,
+                }),
+              });
+            } catch (snapjaErr) {
+              console.log(
+                'Snapja booking failed for addon:',
+                addon.name,
+                'Day',
+                dayIdx + 1,
+                snapjaErr,
+              );
+            }
           }
         }
       }
@@ -379,9 +453,15 @@ const BookingScreen = () => {
       showAppModal({
         variant: 'success',
         title: 'Payment Successful! ✓',
-        message: `Payment of ₹${totalAmount.toLocaleString('en-IN')} completed. Your booking is confirmed!`,
+        message: `Payment of ₹${totalAmount.toLocaleString(
+          'en-IN',
+        )} completed. Your booking is confirmed!`,
         primaryLabel: 'Go to My Trips',
         onPrimaryPress: () => {
+          closeAppModal();
+          navigation.navigate('Main', { screen: 'MyTrip' });
+        },
+        onClose: () => {
           closeAppModal();
           navigation.navigate('Main', { screen: 'MyTrip' });
         },
@@ -398,7 +478,10 @@ const BookingScreen = () => {
         showAppModal({
           variant: 'error',
           title: 'Payment Failed',
-          message: err?.response?.data?.message || err?.description || 'Payment could not be processed. Please try again.',
+          message:
+            err?.response?.data?.message ||
+            err?.description ||
+            'Payment could not be processed. Please try again.',
         });
       }
     } finally {
@@ -497,7 +580,9 @@ const BookingScreen = () => {
                 marginTop: 4,
               }}
             >
-              <Text style={{ fontSize: 10, fontWeight: '600', color: '#1F8A70' }}>
+              <Text
+                style={{ fontSize: 10, fontWeight: '600', color: '#1F8A70' }}
+              >
                 Guest Favorite
               </Text>
             </View>
@@ -520,7 +605,7 @@ const BookingScreen = () => {
                 {destination?.avgRating || destination?.rating || 4.5}
               </Text>
               <Text style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>
-                {destination?.reviewCount || '20k'} reviews
+                {destination?.reviewCount || 0} reviews
               </Text>
               <Text style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 4 }}>
                 • From ₹{(destination?.price || 0).toLocaleString('en-IN')}
@@ -537,7 +622,15 @@ const BookingScreen = () => {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={iconBox}>
-                <Camera size={18} color="#6B7280" />
+                {routeAddons.some(
+                  a =>
+                    a.name?.toLowerCase().includes('reel') ||
+                    a.name?.toLowerCase().includes('video'),
+                ) ? (
+                  <Video size={18} color="#6B7280" />
+                ) : (
+                  <Camera size={18} color="#6B7280" />
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text
@@ -567,8 +660,168 @@ const BookingScreen = () => {
           </TouchableOpacity>
         )}
 
-        {/* Dates */}
-        <View style={cardStyle}>
+        {/* Addon Day Picker — select which days you want photographer/reelmaker */}
+        {routeAddons && routeAddons.length > 0 && itinerary.length > 0 && (
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 14,
+              padding: 14,
+              marginBottom: 12,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '700',
+                color: '#111827',
+                marginBottom: 4,
+              }}
+            >
+              Select Days for Add-Ons
+            </Text>
+            <Text style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 12 }}>
+              Choose which days you'd like the service. Price varies by
+              location.
+            </Text>
+
+            {routeAddons.map(addon => {
+              const isSnapja =
+                addon.name?.toLowerCase().includes('photographer') ||
+                addon.name?.toLowerCase().includes('reel') ||
+                addon.name?.toLowerCase().includes('videographer');
+              if (!isSnapja) return null;
+              const selectedForAddon = addonDays[addon.name] || [];
+
+              return (
+                <View key={addon.name} style={{ marginBottom: 14 }}>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: 8,
+                    }}
+                  >
+                    {addon.name?.toLowerCase().includes('reel') ||
+                    addon.name?.toLowerCase().includes('video')
+                      ? '🎬'
+                      : '📷'}{' '}
+                    {addon.name}
+                  </Text>
+                  {itinerary.map((day, idx) => {
+                    const isSelected = selectedForAddon.includes(idx);
+                    const surcharge = day.isOutsideCity ? outsideCityCharge : 0;
+                    const dayPrice = ADDON_BASE_PRICE + surcharge;
+                    const locationLabel = day.isOutsideCity
+                      ? '(Outside City)'
+                      : '(Within City)';
+
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => {
+                          setAddonDays(prev => {
+                            const current = prev[addon.name] || [];
+                            const updated = isSelected
+                              ? current.filter(d => d !== idx)
+                              : [...current, idx];
+                            return { ...prev, [addon.name]: updated };
+                          });
+                        }}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          paddingVertical: 10,
+                          paddingHorizontal: 12,
+                          marginBottom: 6,
+                          borderRadius: 10,
+                          borderWidth: 1.5,
+                          borderColor: isSelected ? '#1F8A70' : '#E5E7EB',
+                          backgroundColor: isSelected ? '#E6F4EF' : '#F9FAFB',
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: 4,
+                            borderWidth: 2,
+                            borderColor: isSelected ? '#1F8A70' : '#D1D5DB',
+                            backgroundColor: isSelected ? '#1F8A70' : '#fff',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: 10,
+                          }}
+                        >
+                          {isSelected && <Check size={14} color="#fff" />}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              fontWeight: '600',
+                              color: '#111827',
+                            }}
+                          >
+                            Day {day.day || idx + 1}: {day.title || 'Untitled'}
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              color: day.isOutsideCity ? '#D97706' : '#6B7280',
+                              marginTop: 2,
+                            }}
+                          >
+                            {locationLabel}
+                            {day.pickupPoint ? ` • ${day.pickupPoint}` : ''}
+                          </Text>
+                        </View>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: '700',
+                            color: isSelected ? '#1F8A70' : '#374151',
+                          }}
+                        >
+                          ₹{dayPrice.toLocaleString('en-IN')}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              );
+            })}
+
+            {addonPrice > 0 && (
+              <View
+                style={{
+                  backgroundColor: '#E6F4EF',
+                  borderRadius: 8,
+                  padding: 10,
+                  marginTop: 4,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '700',
+                    color: '#065F46',
+                    textAlign: 'center',
+                  }}
+                >
+                  Add-On Total: ₹{addonPrice.toLocaleString('en-IN')}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Dates — tappable */}
+        <TouchableOpacity
+          style={cardStyle}
+          onPress={() => setShowDateModal(true)}
+        >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={iconBox}>
               <Calendar size={18} color="#6B7280" />
@@ -598,7 +851,7 @@ const BookingScreen = () => {
               </Text>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Guests — tappable */}
         <TouchableOpacity
@@ -920,8 +1173,10 @@ const BookingScreen = () => {
           >
             Cancellation Policy
           </Text>
-          {(adminPolicies.cancellation ||
-            'Free cancellation up to 5 days before travel.No refund after that')
+          {(
+            adminPolicies.cancellation ||
+            'Free cancellation up to 5 days before travel.No refund after that'
+          )
             .split('.')
             .filter(Boolean)
             .map((line, i) => (
@@ -935,7 +1190,12 @@ const BookingScreen = () => {
               >
                 <Check size={14} color="#9CA3AF" style={{ marginTop: 2 }} />
                 <Text
-                  style={{ marginLeft: 8, fontSize: 14, color: '#1E2A45', flex: 1 }}
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 14,
+                    color: '#1E2A45',
+                    flex: 1,
+                  }}
                 >
                   {line.trim()}
                 </Text>
@@ -952,8 +1212,10 @@ const BookingScreen = () => {
           >
             Payment Policy
           </Text>
-          {(adminPolicies.refund ||
-            'Pay full amount during booking.Secure online payment')
+          {(
+            adminPolicies.refund ||
+            'Pay full amount during booking.Secure online payment'
+          )
             .split('.')
             .filter(Boolean)
             .map((line, i) => (
@@ -967,7 +1229,12 @@ const BookingScreen = () => {
               >
                 <Check size={14} color="#9CA3AF" style={{ marginTop: 2 }} />
                 <Text
-                  style={{ marginLeft: 8, fontSize: 14, color: '#1E2A45', flex: 1 }}
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 14,
+                    color: '#1E2A45',
+                    flex: 1,
+                  }}
                 >
                   {line.trim()}
                 </Text>
@@ -1121,7 +1388,7 @@ const BookingScreen = () => {
             )}
             {addonPrice > 0 && (
               <PriceRow
-                label={`Add-ons (${routeAddons.map(a => a.name).join(', ')})`}
+                label="Add-ons"
                 value={`₹${addonPrice.toLocaleString('en-IN')}`}
               />
             )}
@@ -1346,7 +1613,175 @@ const BookingScreen = () => {
           </View>
         </View>
       </Modal>
-      <AppModal {...modal} onClose={closeAppModal} />
+      {/* ── Date Change Modal ────────────────────────────────────────────── */}
+      <Modal visible={showDateModal} transparent animationType="slide">
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'flex-end',
+            backgroundColor: 'rgba(0,0,0,0.4)',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: '#fff',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 24,
+              maxHeight: '60%',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: '#111827',
+                marginBottom: 16,
+              }}
+            >
+              Select Date
+            </Text>
+
+            {batchesLoading ? (
+              <ActivityIndicator
+                color="#1F8A70"
+                style={{ marginVertical: 24 }}
+              />
+            ) : availableBatches.filter(b => {
+                const now = new Date();
+                return (
+                  b.isActive &&
+                  new Date(b.startDate) > now &&
+                  b.totalSeats - b.bookedSeats > 0
+                );
+              }).length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <Calendar size={32} color="#D1D5DB" />
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 10 }}>
+                  No dates available
+                </Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {availableBatches
+                  .filter(b => {
+                    const now = new Date();
+                    return (
+                      b.isActive &&
+                      new Date(b.startDate) > now &&
+                      b.totalSeats - b.bookedSeats > 0
+                    );
+                  })
+                  .map((batch, i) => {
+                    const start = new Date(batch.startDate);
+                    const end = new Date(batch.endDate);
+                    const label = `${start.toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                    })} - ${end.toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}`;
+                    const seats =
+                      (batch.totalSeats || 0) - (batch.bookedSeats || 0);
+                    const isCurrentBatch = batch._id === batchId;
+
+                    return (
+                      <TouchableOpacity
+                        key={batch._id || i}
+                        onPress={() => {
+                          setSelectedBatch(batch);
+                          setBatchId(batch._id);
+                          setShowDateModal(false);
+                        }}
+                        style={{
+                          borderWidth: 1.5,
+                          borderColor: isCurrentBatch ? '#1F8A70' : '#E5E7EB',
+                          backgroundColor: isCurrentBatch
+                            ? '#E6F4EF'
+                            : '#F9FAFB',
+                          borderRadius: 12,
+                          padding: 14,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <View>
+                            <Text
+                              style={{
+                                fontSize: 14,
+                                fontWeight: '600',
+                                color: '#111827',
+                              }}
+                            >
+                              {label}
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                color: '#6B7280',
+                                marginTop: 2,
+                              }}
+                            >
+                              ₹
+                              {Number(batch.adultPrice || 0).toLocaleString(
+                                'en-IN',
+                              )}
+                              /person • {seats} seats left
+                            </Text>
+                          </View>
+                          {isCurrentBatch && (
+                            <View
+                              style={{
+                                backgroundColor: '#1F8A70',
+                                paddingHorizontal: 8,
+                                paddingVertical: 3,
+                                borderRadius: 6,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: '700',
+                                  color: '#fff',
+                                }}
+                              >
+                                Selected
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+              </ScrollView>
+            )}
+
+            <TouchableOpacity
+              onPress={() => setShowDateModal(false)}
+              style={{
+                backgroundColor: '#1F8A70',
+                borderRadius: 12,
+                paddingVertical: 14,
+                alignItems: 'center',
+                marginTop: 12,
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
+                Done
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <AppModal {...modal} onClose={modal.onClose || closeAppModal} />
     </SafeAreaView>
   );
 };
@@ -1443,7 +1878,10 @@ const PriceRow = ({ label, value, bold, green }) => (
         fontSize: 14,
         color: bold ? '#111827' : '#6B7280',
         fontWeight: bold ? '700' : '400',
+        flex: 1,
+        marginRight: 8,
       }}
+      numberOfLines={2}
     >
       {label}
     </Text>

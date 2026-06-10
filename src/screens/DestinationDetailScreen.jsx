@@ -32,6 +32,8 @@ import {
   Upload,
   Heart,
   Tag,
+  Camera,
+  Video,
 } from 'lucide-react-native';
 import './../../android/app/src/utils/globalFont.js';
 
@@ -845,6 +847,32 @@ const DestinationDetailScreen = () => {
                       </Text>
                     </View>
                   </View>
+                  {/* Pickup point */}
+                  {day.pickupPoint ? (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        marginBottom: 10,
+                        paddingLeft: 8,
+                      }}
+                    >
+                      <MapPin
+                        size={13}
+                        color={day.isOutsideCity ? '#D97706' : '#16A34A'}
+                      />
+                      <Text
+                        style={{
+                          marginLeft: 6,
+                          fontSize: 12,
+                          color: day.isOutsideCity ? '#D97706' : '#16A34A',
+                          fontWeight: '500',
+                        }}
+                      >
+                        {day.pickupPoint}
+                      </Text>
+                    </View>
+                  ) : null}
                   {/* Day points */}
                   {day.points?.map((pt, j) => (
                     <View
@@ -1213,22 +1241,58 @@ const DestinationDetailScreen = () => {
               </Text>
             </Text>
             {[
-              {
-                name: 'Professional Photographer',
-                subtitle: 'No travel required',
-                price: 2000,
-                details: ['Local', '30 min', '2 Reels'],
-                color: '#EFF4FF',
-                detailsBg: '#E7EDFA',
-              },
-              {
-                name: 'Professional Reel maker',
-                subtitle: 'Shoot on iPhone & Travel to your location',
-                price: 2000,
-                details: ['Travel', '30 min', '2 Reels'],
-                color: '#F3FAF7',
-                detailsBg: '#E7F2EE',
-              },
+              ...(destination.addons && destination.addons.length > 0
+                ? destination.addons
+                    .filter(
+                      a =>
+                        a.name?.toLowerCase().includes('photographer') ||
+                        a.name?.toLowerCase().includes('reel') ||
+                        a.name?.toLowerCase().includes('videographer'),
+                    )
+                    .map((a, idx) => ({
+                      name: a.name,
+                      subtitle:
+                        a.details?.[0] ||
+                        (a.name?.toLowerCase().includes('photographer')
+                          ? 'No travel required'
+                          : 'Shoot on iPhone & Travel to your location'),
+                      price: a.price || 2000,
+                      details:
+                        a.details?.length > 1
+                          ? a.details.slice(0, 3)
+                          : a.name?.toLowerCase().includes('photographer')
+                          ? ['Local', '30 min', '2 Reels']
+                          : ['Travel', '30 min', '2 Reels'],
+                      color: idx % 2 === 0 ? '#EFF4FF' : '#F3FAF7',
+                      detailsBg: idx % 2 === 0 ? '#E7EDFA' : '#E7F2EE',
+                    }))
+                : []),
+              ...(!destination.addons ||
+              destination.addons.filter(
+                a =>
+                  a.name?.toLowerCase().includes('photographer') ||
+                  a.name?.toLowerCase().includes('reel') ||
+                  a.name?.toLowerCase().includes('videographer'),
+              ).length === 0
+                ? [
+                    {
+                      name: 'Professional Photographer',
+                      subtitle: 'No travel required',
+                      price: 2000,
+                      details: ['Local', '30 min', '2 Reels'],
+                      color: '#EFF4FF',
+                      detailsBg: '#E7EDFA',
+                    },
+                    {
+                      name: 'Professional Reel maker',
+                      subtitle: 'Shoot on iPhone & Travel to your location',
+                      price: 2000,
+                      details: ['Travel', '30 min', '2 Reels'],
+                      color: '#F3FAF7',
+                      detailsBg: '#E7F2EE',
+                    },
+                  ]
+                : []),
             ].map((addon, i) => (
               <View
                 key={i}

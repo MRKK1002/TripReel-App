@@ -32,6 +32,7 @@ import { chatAPI, SERVER_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import io from 'socket.io-client';
 import api from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const resolveImage = url => {
   if (!url) return null;
@@ -130,12 +131,33 @@ const MessagesScreen = () => {
   const fetchConversations = useCallback(async () => {
     try {
       const res = await chatAPI.getConversations();
-      setConversations(res.data?.conversations || []);
+      const data = res.data?.conversations || [];
+      setConversations(data);
+      AsyncStorage.setItem('@cache_conversations', JSON.stringify(data)).catch(
+        () => {},
+      );
     } catch {
       setConversations([]);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Load cached conversations on mount
+  useEffect(() => {
+    AsyncStorage.getItem('@cache_conversations')
+      .then(raw => {
+        if (raw && loading) {
+          try {
+            const cached = JSON.parse(raw);
+            if (cached?.length) {
+              setConversations(cached);
+              setLoading(false);
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useFocusEffect(

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import {
   MessageCircle,
 } from 'lucide-react-native';
 import { notificationsAPI } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TYPE_CONFIG = {
   booking_confirmed: { icon: CheckCircle, color: '#10B981', bg: '#D1FAE5' },
@@ -64,13 +65,34 @@ const NotificationScreen = () => {
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await notificationsAPI.getMy();
-      setNotifications(res.data?.notifications || []);
+      const data = res.data?.notifications || [];
+      setNotifications(data);
+      AsyncStorage.setItem('@cache_notifications', JSON.stringify(data)).catch(
+        () => {},
+      );
     } catch {
       setNotifications([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+  }, []);
+
+  // Load cached notifications on mount
+  useEffect(() => {
+    AsyncStorage.getItem('@cache_notifications')
+      .then(raw => {
+        if (raw && loading) {
+          try {
+            const cached = JSON.parse(raw);
+            if (cached?.length) {
+              setNotifications(cached);
+              setLoading(false);
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useFocusEffect(

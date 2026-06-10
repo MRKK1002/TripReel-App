@@ -8,6 +8,7 @@ import React, {
 import { Alert } from 'react-native';
 import { wishlistAPI } from '../services/api';
 import { useAuth } from './AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WishlistContext = createContext(null);
 
@@ -25,7 +26,7 @@ export const WishlistProvider = ({ children }) => {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  const buildSavedIds = useCallback((lists) => {
+  const buildSavedIds = useCallback(lists => {
     const ids = new Set();
     lists.forEach(wl => {
       (wl.packages || []).forEach(pkg => {
@@ -49,12 +50,32 @@ export const WishlistProvider = ({ children }) => {
       const lists = res.data.wishlists || [];
       setWishlists(lists);
       setSavedIds(buildSavedIds(lists));
+      AsyncStorage.setItem('@cache_wishlists', JSON.stringify(lists)).catch(
+        () => {},
+      );
     } catch (err) {
       console.warn('WishlistContext: fetchWishlists error', err?.message);
     } finally {
       setLoading(false);
     }
   }, [isAuthenticated, buildSavedIds]);
+
+  // Load cached wishlists instantly on mount
+  useEffect(() => {
+    AsyncStorage.getItem('@cache_wishlists')
+      .then(raw => {
+        if (raw) {
+          try {
+            const cached = JSON.parse(raw);
+            if (cached?.length) {
+              setWishlists(cached);
+              setSavedIds(buildSavedIds(cached));
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  }, [buildSavedIds]);
 
   // Reload whenever auth state changes
   useEffect(() => {
@@ -77,7 +98,9 @@ export const WishlistProvider = ({ children }) => {
     } catch (e) {
       // Fall through to create
     }
-    const res = await wishlistAPI.createWishlist({ name: DEFAULT_WISHLIST_NAME });
+    const res = await wishlistAPI.createWishlist({
+      name: DEFAULT_WISHLIST_NAME,
+    });
     const newList = res.data.wishlist;
     setWishlists([newList]);
     return newList;
@@ -86,9 +109,12 @@ export const WishlistProvider = ({ children }) => {
   // ── Toggle save/unsave for a package ─────────────────────────────────────
 
   const toggleWishlist = useCallback(
-    async (packageId) => {
+    async packageId => {
       if (!isAuthenticated) {
-        Alert.alert('Login Required', 'Please log in to save packages to your wishlist.');
+        Alert.alert(
+          'Login Required',
+          'Please log in to save packages to your wishlist.',
+        );
         return false;
       }
 
@@ -105,8 +131,8 @@ export const WishlistProvider = ({ children }) => {
         if (isSaved) {
           // Find which wishlist contains this package and remove it
           const owningList = wishlists.find(wl =>
-            (wl.packages || []).some(p =>
-              (typeof p === 'object' ? p._id : p) === packageId,
+            (wl.packages || []).some(
+              p => (typeof p === 'object' ? p._id : p) === packageId,
             ),
           );
           if (owningList) {
@@ -126,21 +152,34 @@ export const WishlistProvider = ({ children }) => {
           isSaved ? next.add(packageId) : next.delete(packageId);
           return next;
         });
-        Alert.alert('Error', err?.response?.data?.message || 'Could not update wishlist.');
+        Alert.alert(
+          'Error',
+          err?.response?.data?.message || 'Could not update wishlist.',
+        );
         return isSaved;
       }
     },
-    [isAuthenticated, savedIds, wishlists, getOrCreateDefaultWishlist, fetchWishlists],
+    [
+      isAuthenticated,
+      savedIds,
+      wishlists,
+      getOrCreateDefaultWishlist,
+      fetchWishlists,
+    ],
   );
 
-  const isSaved = useCallback(
-    (packageId) => savedIds.has(packageId),
-    [savedIds],
-  );
+  const isSaved = useCallback(packageId => savedIds.has(packageId), [savedIds]);
 
   return (
     <WishlistContext.Provider
-      value={{ wishlists, loading, savedIds, isSaved, toggleWishlist, fetchWishlists }}
+      value={{
+        wishlists,
+        loading,
+        savedIds,
+        isSaved,
+        toggleWishlist,
+        fetchWishlists,
+      }}
     >
       {children}
     </WishlistContext.Provider>

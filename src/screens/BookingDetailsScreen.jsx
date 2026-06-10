@@ -152,7 +152,35 @@ const TrackStep = ({ label, sublabel, status, date, isLast }) => {
 const BookingDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const booking = route.params?.booking;
+  const routeBooking = route.params?.booking;
+  const routeBookingId = route.params?.bookingId;
+
+  const [booking, setBooking] = useState(routeBooking || null);
+  const [fetchLoading, setFetchLoading] = useState(
+    !routeBooking && !!routeBookingId,
+  );
+  const [fetchError, setFetchError] = useState('');
+
+  // Fetch booking from API if only bookingId was passed (e.g. from notification tap)
+  useEffect(() => {
+    if (routeBooking) {
+      setBooking(routeBooking);
+      return;
+    }
+    if (!routeBookingId) return;
+    setFetchLoading(true);
+    tripBookingsAPI
+      .getById(routeBookingId)
+      .then(res => {
+        if (res.data?.booking) {
+          setBooking(res.data.booking);
+        } else {
+          setFetchError('Booking not found');
+        }
+      })
+      .catch(() => setFetchError('Could not load booking details'))
+      .finally(() => setFetchLoading(false));
+  }, [routeBookingId, routeBooking]);
 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -167,6 +195,73 @@ const BookingDetailsScreen = () => {
     'Other',
   ];
   const [selectedReason, setSelectedReason] = useState('');
+
+  // Show loading or error state when fetching from notification tap
+  if (fetchLoading) {
+    return (
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: '#F9FAFB',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <ActivityIndicator size="large" color="#1F8A70" />
+        <Text style={{ marginTop: 12, fontSize: 14, color: '#6B7280' }}>
+          Loading booking...
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (fetchError || !booking) {
+    return (
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: '#F9FAFB',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: '700',
+            color: '#111827',
+            marginBottom: 8,
+          }}
+        >
+          {fetchError || 'Booking not found'}
+        </Text>
+        <Text
+          style={{
+            fontSize: 13,
+            color: '#6B7280',
+            textAlign: 'center',
+            marginBottom: 20,
+          }}
+        >
+          This booking may have been removed or is not accessible.
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{
+            backgroundColor: '#1F8A70',
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 10,
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
+            Go Back
+          </Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   const handleCancelPress = async () => {
     setShowCancelModal(true);
@@ -584,6 +679,75 @@ const BookingDetailsScreen = () => {
             </Text>
           </View>
         </View>
+
+        {/* Add-Ons */}
+        {booking.addonNames && booking.addonNames.length > 0 && (
+          <View style={[cardStyle, { marginTop: 12 }]}>
+            <Text style={sectionLabel}>Add-Ons</Text>
+            {booking.addonNames.map((name, i) => {
+              const days = booking.addonDays?.[name] || [];
+              const isReel =
+                name?.toLowerCase().includes('reel') ||
+                name?.toLowerCase().includes('video');
+              return (
+                <View
+                  key={i}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 10,
+                    borderBottomWidth:
+                      i < booking.addonNames.length - 1 ? 1 : 0,
+                    borderBottomColor: '#F3F4F6',
+                  }}
+                >
+                  <Text style={{ fontSize: 18, marginRight: 10 }}>
+                    {isReel ? '🎬' : '📷'}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: '600',
+                        color: '#111827',
+                      }}
+                    >
+                      {name}
+                    </Text>
+                    {days.length > 0 && (
+                      <Text
+                        style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}
+                      >
+                        {days.map(idx => `Day ${idx + 1}`).join(', ')}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+            {booking.addonTotalPrice > 0 && (
+              <View
+                style={{
+                  backgroundColor: '#FEF9C3',
+                  borderRadius: 8,
+                  padding: 8,
+                  marginTop: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '600',
+                    color: '#92400E',
+                    textAlign: 'center',
+                  }}
+                >
+                  Add-On Total: {fmtMoney(booking.addonTotalPrice)}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Track Booking */}
         <View style={{ marginTop: 16 }}>

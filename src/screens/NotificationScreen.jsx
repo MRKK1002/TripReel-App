@@ -98,21 +98,21 @@ const NotificationScreen = () => {
   useFocusEffect(
     useCallback(() => {
       fetchNotifications();
-      // Mark all as read after a short delay (so user sees unread state first)
-      setTimeout(() => {
-        notificationsAPI
-          .markAllRead()
-          .then(() => {
-            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-          })
-          .catch(() => {});
-      }, 2000);
+      // Mark all read only when the user LEAVES the screen — so unread items
+      // stay highlighted and sorted on top the whole time they're viewing.
+      return () => {
+        notificationsAPI.markAllRead().catch(() => {});
+      };
     }, [fetchNotifications]),
   );
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  const filtered =
-    activeTab === 'all' ? notifications : notifications.filter(n => !n.read);
+  // Unread first, then by most recent
+  const sorted = [...notifications].sort((a, b) => {
+    if (!a.read !== !b.read) return a.read ? 1 : -1;
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+  const filtered = activeTab === 'all' ? sorted : sorted.filter(n => !n.read);
 
   return (
     <SafeAreaView style={styles.container}>

@@ -63,6 +63,8 @@ const SearchScreen = () => {
   // Date filter
   const [selectedDate, setSelectedDate] = useState(null); // Date object or null
   const [dateOptions, setDateOptions] = useState([]);
+  const [monthOptions, setMonthOptions] = useState([]);
+  const [selectedMonthKey, setSelectedMonthKey] = useState(null);
 
   // Guest filter
   const [adults, setAdults] = useState(1);
@@ -127,15 +129,28 @@ const SearchScreen = () => {
       })
       .catch(() => {});
 
-    // Generate next 30 days as date options
+    // Generate next 180 days (~6 months) as date options
     const days = [];
     const today = new Date();
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 180; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
       days.push(d);
     }
     setDateOptions(days);
+
+    // Build month tabs from the day range so users can browse beyond one month
+    const months = [];
+    const seenMonths = new Set();
+    days.forEach(d => {
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (!seenMonths.has(key)) {
+        seenMonths.add(key);
+        months.push({ key, year: d.getFullYear(), month: d.getMonth() });
+      }
+    });
+    setMonthOptions(months);
+    if (months.length > 0) setSelectedMonthKey(months[0].key);
   }, []);
 
   // Search API call — includes date and guests filters
@@ -689,6 +704,48 @@ const SearchScreen = () => {
 
           {whenExpanded && (
             <View style={{ marginTop: 14 }}>
+              {/* Month tabs — lets users browse up to 6 months ahead */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, marginBottom: 12 }}
+              >
+                {monthOptions.map(m => {
+                  const isActive = m.key === selectedMonthKey;
+                  const label = new Date(m.year, m.month, 1).toLocaleDateString(
+                    'en-IN',
+                    {
+                      month: 'long',
+                      year: 'numeric',
+                    },
+                  );
+                  return (
+                    <TouchableOpacity
+                      key={m.key}
+                      onPress={() => setSelectedMonthKey(m.key)}
+                      style={{
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        borderWidth: 1.5,
+                        borderColor: isActive ? '#1F8A70' : '#E5E7EB',
+                        backgroundColor: isActive ? '#1F8A70' : '#F9FAFB',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: isActive ? '#fff' : '#374151',
+                        }}
+                      >
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -716,56 +773,61 @@ const SearchScreen = () => {
                     Any
                   </Text>
                 </TouchableOpacity>
-                {dateOptions.map((d, i) => {
-                  const isSelected =
-                    selectedDate &&
-                    d.toDateString() === selectedDate.toDateString();
-                  return (
-                    <TouchableOpacity
-                      key={i}
-                      onPress={() => setSelectedDate(d)}
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        borderRadius: 10,
-                        borderWidth: 1.5,
-                        borderColor: isSelected ? '#1F8A70' : '#E5E7EB',
-                        backgroundColor: isSelected ? '#E6F4EF' : '#F9FAFB',
-                        alignItems: 'center',
-                        minWidth: 52,
-                      }}
-                    >
-                      <Text
+                {dateOptions
+                  .filter(
+                    d =>
+                      `${d.getFullYear()}-${d.getMonth()}` === selectedMonthKey,
+                  )
+                  .map((d, i) => {
+                    const isSelected =
+                      selectedDate &&
+                      d.toDateString() === selectedDate.toDateString();
+                    return (
+                      <TouchableOpacity
+                        key={i}
+                        onPress={() => setSelectedDate(d)}
                         style={{
-                          fontSize: 11,
-                          color: isSelected ? '#1F8A70' : '#9CA3AF',
-                          fontWeight: '500',
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 10,
+                          borderWidth: 1.5,
+                          borderColor: isSelected ? '#1F8A70' : '#E5E7EB',
+                          backgroundColor: isSelected ? '#E6F4EF' : '#F9FAFB',
+                          alignItems: 'center',
+                          minWidth: 52,
                         }}
                       >
-                        {d.toLocaleDateString('en-IN', { weekday: 'short' })}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          fontWeight: '700',
-                          color: isSelected ? '#1F8A70' : '#111827',
-                          marginTop: 2,
-                        }}
-                      >
-                        {d.getDate()}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          color: isSelected ? '#1F8A70' : '#9CA3AF',
-                          marginTop: 1,
-                        }}
-                      >
-                        {d.toLocaleDateString('en-IN', { month: 'short' })}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            color: isSelected ? '#1F8A70' : '#9CA3AF',
+                            fontWeight: '500',
+                          }}
+                        >
+                          {d.toLocaleDateString('en-IN', { weekday: 'short' })}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            fontWeight: '700',
+                            color: isSelected ? '#1F8A70' : '#111827',
+                            marginTop: 2,
+                          }}
+                        >
+                          {d.getDate()}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            color: isSelected ? '#1F8A70' : '#9CA3AF',
+                            marginTop: 1,
+                          }}
+                        >
+                          {d.toLocaleDateString('en-IN', { month: 'short' })}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
               </ScrollView>
             </View>
           )}

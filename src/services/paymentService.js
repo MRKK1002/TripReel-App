@@ -35,35 +35,45 @@ export const initiateRazorpayPayment = async ({
 }) => {
   let razorpayOrderId = null;
   let internalOrderId = null;
+  let serverAmount = amount;
 
-  // Step 1: Try to create order on backend (if endpoint exists)
+  // Step 1: Create the order on the backend (REQUIRED — the server computes the
+  // authoritative amount; we never let the client decide what gets charged).
   try {
     const orderRes = await api.post('/payments/create-order', {
-      amount,
       packageId,
       batchId,
       seats,
       couponCode,
-      travelers,
       addonDays,
     });
     razorpayOrderId = orderRes.data.razorpayOrderId;
     internalOrderId = orderRes.data.orderId;
+    if (orderRes.data.amount) serverAmount = orderRes.data.amount;
   } catch (err) {
-    // Backend endpoint not ready yet — proceed without order_id (test mode)
-    console.log(
-      'Backend order creation not available, proceeding in test mode',
-    );
+    // Without a server order we cannot safely charge — abort.
+    return {
+      success: false,
+      error:
+        err?.response?.data?.message ||
+        'Could not start payment. Please try again.',
+    };
   }
 
-  // Step 2: Open Razorpay Checkout
+  if (!razorpayOrderId) {
+    return { success: false, error: 'Payment could not be initialised.' };
+  }
+
+  // Step 2: Open Razorpay Checkout. With order_id set, Razorpay charges the
+  // ORDER's amount (server-controlled), regardless of the amount field.
   const options = {
     description: 'TripReel Trip Booking',
     image: 'https://tripreel.com/logo.png',
     currency: 'INR',
     key: RAZORPAY_KEY,
-    amount: amount * 100, // Convert INR to paise
+    amount: Math.round(serverAmount * 100),
     name: 'TripReel',
+    order_id: razorpayOrderId,
     prefill: {
       email: user?.email || '',
       contact: user?.phone || '',
@@ -71,11 +81,6 @@ export const initiateRazorpayPayment = async ({
     },
     theme: { color: '#1F8A70' },
   };
-
-  // Add order_id only if backend created one
-  if (razorpayOrderId) {
-    options.order_id = razorpayOrderId;
-  }
 
   const paymentResult = await RazorpayCheckout.open(options);
 

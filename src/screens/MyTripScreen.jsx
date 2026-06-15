@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import {
   Modal,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -141,66 +144,71 @@ const RateModal = ({ booking, onClose, onSubmitted }) => {
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={styles.rateBackdrop}>
-        <View style={styles.rateSheet}>
-          <View style={styles.rateHandle} />
-          <Text style={styles.rateTitle}>How was your trip?</Text>
-          <Text style={styles.rateSub}>{pkg.packageTitle}</Text>
-          <View style={{ alignItems: 'center', marginVertical: 20 }}>
-            <StarRating rating={rating} onRate={setRating} size={40} />
-            <Text style={styles.rateLabel}>
-              {rating === 0
-                ? 'Tap to rate'
-                : ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][
-                    rating
-                  ]}
-            </Text>
-          </View>
-          <TextInput
-            value={comment}
-            onChangeText={setComment}
-            placeholder="Share your experience (optional)…"
-            placeholderTextColor="#9CA3AF"
-            multiline
-            numberOfLines={3}
-            style={styles.rateInput}
-            maxLength={500}
-          />
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-            <TouchableOpacity
-              onPress={onClose}
-              style={[styles.rateBtn, { backgroundColor: '#F1F5F9' }]}
-            >
-              <Text
-                style={{ color: '#475569', fontWeight: '600', fontSize: 15 }}
-              >
-                Skip
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View style={styles.rateBackdrop}>
+          <View style={styles.rateSheet}>
+            <View style={styles.rateHandle} />
+            <Text style={styles.rateTitle}>How was your trip?</Text>
+            <Text style={styles.rateSub}>{pkg.packageTitle}</Text>
+            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+              <StarRating rating={rating} onRate={setRating} size={40} />
+              <Text style={styles.rateLabel}>
+                {rating === 0
+                  ? 'Tap to rate'
+                  : ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][
+                      rating
+                    ]}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSubmit}
-              disabled={submitting || rating === 0}
-              style={[
-                styles.rateBtn,
-                {
-                  backgroundColor: '#1F8A70',
-                  opacity: submitting || rating === 0 ? 0.6 : 1,
-                },
-              ]}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
+            </View>
+            <TextInput
+              value={comment}
+              onChangeText={setComment}
+              placeholder="Share your experience (optional)…"
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={3}
+              style={styles.rateInput}
+              maxLength={500}
+            />
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={[styles.rateBtn, { backgroundColor: '#F1F5F9' }]}
+              >
                 <Text
-                  style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}
+                  style={{ color: '#475569', fontWeight: '600', fontSize: 15 }}
                 >
-                  Submit Review
+                  Skip
                 </Text>
-              )}
-            </TouchableOpacity>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSubmit}
+                disabled={submitting || rating === 0}
+                style={[
+                  styles.rateBtn,
+                  {
+                    backgroundColor: '#1F8A70',
+                    opacity: submitting || rating === 0 ? 0.6 : 1,
+                  },
+                ]}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text
+                    style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}
+                  >
+                    Submit Review
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -300,6 +308,21 @@ const BookingCard = ({ booking, onRate, onViewDetails }) => {
           {statusLabel}
         </Text>
 
+        {/* Refund badge for cancelled bookings */}
+        {booking.status === 'CANCELLED' && booking.refundAmount > 0 && (
+          <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+            {booking.refundStatus === 'REFUNDED'
+              ? `Refunded ₹${Number(booking.refundAmount).toLocaleString(
+                  'en-IN',
+                )} ✓`
+              : booking.refundStatus === 'FAILED'
+              ? 'Refund failed — contact support'
+              : `Refund ₹${Number(booking.refundAmount).toLocaleString(
+                  'en-IN',
+                )} processing`}
+          </Text>
+        )}
+
         {/* Date + Location row */}
         <View style={styles.infoRow}>
           <View style={styles.infoCol}>
@@ -362,6 +385,8 @@ export default function MyTripScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [ratingBooking, setRatingBooking] = useState(null);
+  const [filter, setFilter] = useState('all'); // all | upcoming | completed | cancelled
+  const [visibleCount, setVisibleCount] = useState(10); // infinite-scroll page size
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -408,6 +433,71 @@ export default function MyTripScreen() {
     fetchBookings();
   };
 
+  // Classify a booking into one of the three tab buckets
+  const bucketOf = b => {
+    if (b.status === 'CANCELLED') return 'cancelled';
+    if (b.status === 'COMPLETED') return 'completed';
+    return 'upcoming'; // CONFIRMED + PENDING
+  };
+
+  // Sort + filter: nearest upcoming trip first by default
+  const visibleBookings = useMemo(() => {
+    const now = Date.now();
+
+    // Filter by selected tab
+    const filtered =
+      filter === 'all'
+        ? bookings
+        : bookings.filter(b => bucketOf(b) === filter);
+
+    const startMs = b =>
+      b.snapshot?.startDate ? new Date(b.snapshot.startDate).getTime() : 0;
+    const recentMs = b =>
+      new Date(
+        b.cancelledAt || b.snapshot?.endDate || b.updatedAt || 0,
+      ).getTime();
+
+    // Order: active (upcoming/ongoing) first by nearest start date,
+    // then completed (most recent first), then cancelled (most recent first)
+    const rank = b => {
+      const bucket = bucketOf(b);
+      if (bucket === 'upcoming') return 0;
+      if (bucket === 'completed') return 1;
+      return 2;
+    };
+
+    return [...filtered].sort((a, b) => {
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      if (ra === 0) {
+        // nearest upcoming start date first (past-but-not-ended still ranked by start)
+        return startMs(a) - startMs(b);
+      }
+      // completed / cancelled → most recent first
+      return recentMs(b) - recentMs(a);
+    });
+  }, [bookings, filter]);
+
+  const FILTERS = [
+    { key: 'all', label: 'All' },
+    { key: 'upcoming', label: 'Upcoming' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'cancelled', label: 'Cancelled' },
+  ];
+
+  // Reset infinite-scroll back to the first page whenever the filter changes
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [filter]);
+
+  const pagedBookings = visibleBookings.slice(0, visibleCount);
+  const hasMore = visibleCount < visibleBookings.length;
+
+  const loadMore = () => {
+    if (hasMore) setVisibleCount(c => c + 10);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -416,6 +506,37 @@ export default function MyTripScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Trips</Text>
       </View>
+
+      {/* Filter tabs */}
+      {!loading && bookings.length > 0 && (
+        <View style={styles.filterRow}>
+          {FILTERS.map(f => {
+            const active = filter === f.key;
+            const count =
+              f.key === 'all'
+                ? bookings.length
+                : bookings.filter(b => bucketOf(b) === f.key).length;
+            return (
+              <TouchableOpacity
+                key={f.key}
+                onPress={() => setFilter(f.key)}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    active && styles.filterChipTextActive,
+                  ]}
+                >
+                  {f.label}
+                  {count > 0 ? ` (${count})` : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.center}>
@@ -439,7 +560,9 @@ export default function MyTripScreen() {
           </Text>
         </ScrollView>
       ) : (
-        <ScrollView
+        <FlatList
+          data={pagedBookings}
+          keyExtractor={b => b._id}
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 16, gap: 16 }}
           showsVerticalScrollIndicator={false}
@@ -450,19 +573,35 @@ export default function MyTripScreen() {
               colors={['#1F8A70']}
             />
           }
-        >
-          {bookings.map(b => (
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          renderItem={({ item }) => (
             <BookingCard
-              key={b._id}
-              booking={b}
+              booking={item}
               onRate={setRatingBooking}
               onViewDetails={booking =>
                 navigation.navigate('BookingDetails', { booking })
               }
             />
-          ))}
-          <View style={{ height: 20 }} />
-        </ScrollView>
+          )}
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', paddingTop: 60, gap: 8 }}>
+              <Calendar size={40} color="#CBD5E1" strokeWidth={1.5} />
+              <Text style={styles.emptyTitle}>
+                No {filter !== 'all' ? filter : ''} trips
+              </Text>
+            </View>
+          }
+          ListFooterComponent={
+            hasMore ? (
+              <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#1F8A70" />
+              </View>
+            ) : (
+              <View style={{ height: 20 }} />
+            )
+          }
+        />
       )}
 
       {ratingBooking && (
@@ -487,6 +626,25 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F1F5F9',
   },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  filterChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+  },
+  filterChipActive: { backgroundColor: '#1F8A70' },
+  filterChipText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  filterChipTextActive: { color: '#fff' },
   center: {
     flex: 1,
     alignItems: 'center',

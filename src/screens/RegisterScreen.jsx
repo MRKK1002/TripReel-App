@@ -329,6 +329,14 @@ const RegisterScreen = () => {
       });
       return;
     }
+    if (n.length < 2 || !/^[a-zA-Z][a-zA-Z\s.'-]*$/.test(n)) {
+      showModal({
+        variant: 'error',
+        title: 'Invalid name',
+        message: 'Please enter a valid full name (letters only).',
+      });
+      return;
+    }
     if (!validEmail(e)) {
       showModal({
         variant: 'error',

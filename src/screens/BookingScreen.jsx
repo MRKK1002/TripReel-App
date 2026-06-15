@@ -383,72 +383,8 @@ const BookingScreen = () => {
         return;
       }
 
-      // ── Book Snapja creator if Photographer/Reelmaker add-on selected ────
-      if (routeAddons && routeAddons.length > 0) {
-        const snapjaAddons = routeAddons.filter(
-          a =>
-            a.name?.toLowerCase().includes('photographer') ||
-            a.name?.toLowerCase().includes('reel'),
-        );
-
-        for (const addon of snapjaAddons) {
-          const serviceType = addon.name?.toLowerCase().includes('photographer')
-            ? 'photographer'
-            : 'reelmaker';
-          const selectedDayIndexes = addonDays[addon.name] || [];
-
-          for (const dayIdx of selectedDayIndexes) {
-            const dayInfo = itinerary[dayIdx];
-            // Calculate actual date: batch startDate + (dayNumber - 1) days
-            const batchStart = selectedBatch?.startDate
-              ? new Date(selectedBatch.startDate)
-              : new Date();
-            const actualDate = new Date(batchStart);
-            actualDate.setDate(actualDate.getDate() + dayIdx);
-            const location =
-              dayInfo?.pickupPoint ||
-              destination?.location ||
-              destination?.title ||
-              'India';
-
-            try {
-              await fetch('https://api.snapja.com/api/tripreel/bookings', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-API-Key': 'tripreel_snapja_2025',
-                },
-                body: JSON.stringify({
-                  service_type: serviceType,
-                  location,
-                  price: ADDON_BASE_PRICE,
-                  duration: 1,
-                  date: actualDate.toISOString().split('T')[0],
-                  time: '10:00',
-                  booking_type: 'scheduled',
-                  customer_name:
-                    user?.name || travelers[0]?.name || 'TripReel User',
-                  customer_phone: user?.phone || '',
-                  customer_email: user?.email || '',
-                  notes: `TripReel trip: ${destination?.title || 'Trip'} — ${
-                    addon.name
-                  } — Day ${dayIdx + 1}`,
-                  timezone: 'Asia/Kolkata',
-                  auto_confirm_payment: true,
-                }),
-              });
-            } catch (snapjaErr) {
-              console.log(
-                'Snapja booking failed for addon:',
-                addon.name,
-                'Day',
-                dayIdx + 1,
-                snapjaErr,
-              );
-            }
-          }
-        }
-      }
+      // Snapja addon dispatch is now handled by the backend (held until the
+      // booking is locked-in, then sent to Snapja by a cron job).
 
       showAppModal({
         variant: 'success',

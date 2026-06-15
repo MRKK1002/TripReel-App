@@ -11,6 +11,9 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -24,7 +27,7 @@ import {
   AlertTriangle,
   X,
 } from 'lucide-react-native';
-import { SERVER_URL, tripBookingsAPI } from '../services/api';
+import { SERVER_URL, tripBookingsAPI, reviewsAPI } from '../services/api';
 
 const resolveImage = url => {
   if (!url) return null;
@@ -187,6 +190,44 @@ const BookingDetailsScreen = () => {
   const [refundPreview, setRefundPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
+  // Review modal state
+  const [showRateModal, setShowRateModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [hasReviewedLocal, setHasReviewedLocal] = useState(false);
+
+  // Auto-open review modal if deep-linked from notification
+  useEffect(() => {
+    if (
+      route.params?.openReview &&
+      booking?.status === 'COMPLETED' &&
+      !booking?.hasReviewed
+    ) {
+      setShowRateModal(true);
+    }
+  }, [route.params?.openReview, booking?.status, booking?.hasReviewed]);
+
+  const handleSubmitReview = async () => {
+    if (rating === 0) return;
+    setSubmittingReview(true);
+    try {
+      await reviewsAPI.create({
+        packageId: booking.packageId?._id || booking.packageId,
+        batchId: booking.batchId?._id || booking.batchId,
+        bookingId: booking._id,
+        rating,
+        comment: reviewComment.trim(),
+      });
+      setHasReviewedLocal(true);
+      setShowRateModal(false);
+    } catch (err) {
+      // silently fail — keep modal open
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   const CANCEL_REASONS = [
     'Plans changed',
     'Found a better option',
@@ -318,6 +359,14 @@ const BookingDetailsScreen = () => {
   const location = snap.packageLocation || pkg.location || '—';
   const dateLabel = fmtDateRange(snap.startDate, snap.endDate);
   const price = fmtMoney(snap.adultPrice || pkg.pricing?.adultPrice || 0);
+
+  // Cancel is only allowed for active (CONFIRMED/PENDING) bookings BEFORE the trip starts
+  const tripStarted = snap.startDate
+    ? new Date(snap.startDate) <= new Date()
+    : false;
+  const canCancel =
+    (booking.status === 'CONFIRMED' || booking.status === 'PENDING') &&
+    !tripStarted;
 
   // Guest summary
   const travelers = booking.travelers || [];
@@ -749,6 +798,90 @@ const BookingDetailsScreen = () => {
           </View>
         )}
 
+        {/* Refund status (cancelled bookings) */}
+        {booking.status === 'CANCELLED' && (
+          <View style={[cardStyle, { marginTop: 12 }]}>
+            <Text style={sectionLabel}>Refund Status</Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ fontSize: 13, color: '#6B7280' }}>
+                Refund amount
+              </Text>
+              <Text
+                style={{ fontSize: 16, fontWeight: '700', color: '#1F8A70' }}
+              >
+                {fmtMoney(booking.refundAmount)}
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Text style={{ fontSize: 13, color: '#6B7280' }}>Status</Text>
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                  backgroundColor:
+                    booking.refundStatus === 'REFUNDED'
+                      ? '#DCFCE7'
+                      : booking.refundStatus === 'PROCESSING'
+                      ? '#DBEAFE'
+                      : booking.refundStatus === 'FAILED'
+                      ? '#FEE2E2'
+                      : '#FEF3C7',
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color:
+                      booking.refundStatus === 'REFUNDED'
+                        ? '#16A34A'
+                        : booking.refundStatus === 'PROCESSING'
+                        ? '#2563EB'
+                        : booking.refundStatus === 'FAILED'
+                        ? '#DC2626'
+                        : '#B45309',
+                  }}
+                >
+                  {booking.refundStatus === 'REFUNDED'
+                    ? 'Refunded ✓'
+                    : booking.refundStatus === 'PROCESSING'
+                    ? 'Processing'
+                    : booking.refundStatus === 'FAILED'
+                    ? 'Failed — contact support'
+                    : booking.refundStatus === 'MANUAL'
+                    ? 'Being processed'
+                    : 'No refund'}
+                </Text>
+              </View>
+            </View>
+            {booking.refundStatus === 'PROCESSING' && (
+              <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>
+                Refund will reach your original payment method in 5-7 business
+                days.
+              </Text>
+            )}
+            {booking.refundPercent != null && (
+              <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                {booking.refundPercent}% refunded as per cancellation policy.
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* Track Booking */}
         <View style={{ marginTop: 16 }}>
           <Text
@@ -811,28 +944,28 @@ const BookingDetailsScreen = () => {
         >
           <Text style={bottomBtnText}>Need Help?</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[bottomBtn, { backgroundColor: '#FEF2F2' }]}
-          onPress={handleCancelPress}
-          disabled={
-            booking.status === 'CANCELLED' || booking.status === 'COMPLETED'
-          }
-        >
-          <Text
-            style={[
-              bottomBtnText,
-              {
-                color:
-                  booking.status === 'CANCELLED' ||
-                  booking.status === 'COMPLETED'
-                    ? '#D1D5DB'
-                    : '#EF4444',
-              },
-            ]}
+        {booking.status === 'COMPLETED' &&
+          !booking.hasReviewed &&
+          !hasReviewedLocal && (
+            <TouchableOpacity
+              style={[bottomBtn, { backgroundColor: '#FEF9C3' }]}
+              onPress={() => setShowRateModal(true)}
+            >
+              <Text style={[bottomBtnText, { color: '#B45309' }]}>
+                ⭐ Rate Trip
+              </Text>
+            </TouchableOpacity>
+          )}
+        {canCancel && (
+          <TouchableOpacity
+            style={[bottomBtn, { backgroundColor: '#FEF2F2' }]}
+            onPress={handleCancelPress}
           >
-            Cancel Booking
-          </Text>
-        </TouchableOpacity>
+            <Text style={[bottomBtnText, { color: '#EF4444' }]}>
+              Cancel Booking
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Cancel Confirmation Modal */}
@@ -1049,6 +1182,151 @@ const BookingDetailsScreen = () => {
             </View>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Rate Trip Modal */}
+      <Modal
+        visible={showRateModal}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setShowRateModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <Pressable
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              justifyContent: 'flex-end',
+            }}
+            onPress={() => setShowRateModal(false)}
+          >
+            <Pressable
+              style={{
+                backgroundColor: '#fff',
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                padding: 24,
+                paddingBottom: 32,
+              }}
+              onPress={() => {}}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  color: '#111827',
+                  textAlign: 'center',
+                }}
+              >
+                How was your trip?
+              </Text>
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: '#6B7280',
+                  textAlign: 'center',
+                  marginTop: 4,
+                }}
+              >
+                {snap.packageTitle || title}
+              </Text>
+
+              {/* Stars */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: 8,
+                  marginVertical: 20,
+                }}
+              >
+                {[1, 2, 3, 4, 5].map(s => (
+                  <TouchableOpacity key={s} onPress={() => setRating(s)}>
+                    <Star
+                      size={40}
+                      color="#F59E0B"
+                      fill={s <= rating ? '#F59E0B' : 'none'}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 12,
+                  minHeight: 80,
+                }}
+              >
+                <TextInput
+                  value={reviewComment}
+                  onChangeText={setReviewComment}
+                  placeholder="Share your experience (optional)…"
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  maxLength={500}
+                  style={{
+                    padding: 12,
+                    fontSize: 14,
+                    color: '#111827',
+                    textAlignVertical: 'top',
+                    minHeight: 80,
+                  }}
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                <TouchableOpacity
+                  onPress={() => setShowRateModal(false)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#F1F5F9',
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#475569',
+                      fontWeight: '600',
+                      fontSize: 15,
+                    }}
+                  >
+                    Skip
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSubmitReview}
+                  disabled={submittingReview || rating === 0}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#1F8A70',
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    opacity: submittingReview || rating === 0 ? 0.6 : 1,
+                  }}
+                >
+                  {submittingReview ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text
+                      style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}
+                    >
+                      Submit Review
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

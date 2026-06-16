@@ -36,6 +36,7 @@ export const initiateRazorpayPayment = async ({
   let razorpayOrderId = null;
   let internalOrderId = null;
   let serverAmount = amount;
+  let serverKeyId = RAZORPAY_KEY;
 
   // Step 1: Create the order on the backend (REQUIRED — the server computes the
   // authoritative amount; we never let the client decide what gets charged).
@@ -50,6 +51,9 @@ export const initiateRazorpayPayment = async ({
     razorpayOrderId = orderRes.data.razorpayOrderId;
     internalOrderId = orderRes.data.orderId;
     if (orderRes.data.amount) serverAmount = orderRes.data.amount;
+    // Use the SAME key the backend used to create the order, so the checkout
+    // and the signature verification always belong to the same account.
+    if (orderRes.data.keyId) serverKeyId = orderRes.data.keyId;
   } catch (err) {
     // Without a server order we cannot safely charge — abort.
     return {
@@ -70,7 +74,7 @@ export const initiateRazorpayPayment = async ({
     description: 'TripReel Trip Booking',
     image: 'https://tripreel.com/logo.png',
     currency: 'INR',
-    key: RAZORPAY_KEY,
+    key: serverKeyId,
     amount: Math.round(serverAmount * 100),
     name: 'TripReel',
     order_id: razorpayOrderId,

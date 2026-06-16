@@ -121,7 +121,6 @@ const EditProfileSheet = ({ visible, user, onClose, onSaved }) => {
     try {
       await updateProfile({
         name: name.trim(),
-        email: email.trim(),
         state,
         country,
       });
@@ -207,18 +206,21 @@ const EditProfileSheet = ({ visible, user, onClose, onSaved }) => {
               />
             </View>
 
-            {/* Email */}
-            <Text style={sheet.label}>Email</Text>
-            <View style={sheet.inputRow}>
+            {/* Email — read only (verified at signup) */}
+            <Text style={sheet.label}>
+              Email{' '}
+              <Text style={{ color: '#9CA3AF', fontSize: 11 }}>
+                (cannot be changed)
+              </Text>
+            </Text>
+            <View style={[sheet.inputRow, { backgroundColor: '#F3F4F6' }]}>
               <Mail size={16} color="#9CA3AF" />
               <TextInput
                 value={email}
-                onChangeText={setEmail}
+                editable={false}
                 placeholder="your@email.com"
                 placeholderTextColor="#9CA3AF"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={sheet.input}
+                style={[sheet.input, { color: '#6B7280' }]}
               />
             </View>
 

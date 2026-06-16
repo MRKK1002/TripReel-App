@@ -34,6 +34,7 @@ import {
   Tag,
   Camera,
   Video,
+  AlertCircle,
 } from 'lucide-react-native';
 import './../../android/app/src/utils/globalFont.js';
 
@@ -371,6 +372,37 @@ const DestinationDetailScreen = () => {
         </View>
 
         <View style={{ backgroundColor: '#F8FAFC' }}>
+          {/* Unavailable banner — shows when package is deactivated/suspended */}
+          {destination.isActive === false && (
+            <View
+              style={{
+                backgroundColor: '#FEF2F2',
+                borderWidth: 1,
+                borderColor: '#FECACA',
+                marginHorizontal: 16,
+                marginTop: 14,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <AlertCircle size={18} color="#DC2626" />
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: '#991B1B',
+                  flex: 1,
+                  lineHeight: 18,
+                }}
+              >
+                This package is currently unavailable and cannot be booked.
+              </Text>
+            </View>
+          )}
+
           {/* Title */}
           <View
             style={{
@@ -1683,66 +1715,70 @@ const DestinationDetailScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Bottom Book Now Bar */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: '#fff',
-          borderTopWidth: 1,
-          borderTopColor: '#F3F4F6',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          paddingBottom: 24,
-        }}
-      >
-        <View>
-          <Text style={{ fontSize: 12, color: '#6B7280' }}>From</Text>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>
-            {dates.length > 0 && selectedDate < dates.length
-              ? dates[selectedDate].price
-              : priceStr}
-            <Text style={{ fontSize: 13, fontWeight: '400', color: '#6B7280' }}>
-              {' '}
-              /Guest
-            </Text>
-          </Text>
-        </View>
-        <TouchableOpacity
+      {/* Bottom Book Now Bar — hidden when package is unavailable */}
+      {destination.isActive !== false && (
+        <View
           style={{
-            backgroundColor:
-              dates.length > 0 && dates[selectedDate]?.isFull
-                ? '#94A3B8'
-                : '#1F8A70',
-            paddingHorizontal: 32,
-            paddingVertical: 14,
-            borderRadius: 12,
-          }}
-          onPress={() => {
-            if (dates.length === 0) {
-              navigation.navigate('Booking', { destination, selectedAddons });
-              return;
-            }
-            const selected = dates[selectedDate];
-            if (selected?.isFull) return;
-            navigation.navigate('Booking', {
-              destination,
-              batchId: selected?.batchId,
-              selectedBatch: batches[selectedDate],
-              selectedAddons,
-            });
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: '#fff',
+            borderTopWidth: 1,
+            borderTopColor: '#F3F4F6',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            paddingBottom: 24,
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
-            Book Now
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <View>
+            <Text style={{ fontSize: 12, color: '#6B7280' }}>From</Text>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>
+              {dates.length > 0 && selectedDate < dates.length
+                ? dates[selectedDate].price
+                : priceStr}
+              <Text
+                style={{ fontSize: 13, fontWeight: '400', color: '#6B7280' }}
+              >
+                {' '}
+                /Guest
+              </Text>
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={{
+              backgroundColor:
+                dates.length > 0 && dates[selectedDate]?.isFull
+                  ? '#94A3B8'
+                  : '#1F8A70',
+              paddingHorizontal: 32,
+              paddingVertical: 14,
+              borderRadius: 12,
+            }}
+            onPress={() => {
+              if (dates.length === 0) {
+                navigation.navigate('Booking', { destination, selectedAddons });
+                return;
+              }
+              const selected = dates[selectedDate];
+              if (selected?.isFull) return;
+              navigation.navigate('Booking', {
+                destination,
+                batchId: selected?.batchId,
+                selectedBatch: batches[selectedDate],
+                selectedAddons,
+              });
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
+              Book Now
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaProvider>
   );
 };

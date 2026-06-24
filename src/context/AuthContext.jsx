@@ -129,9 +129,22 @@ export const AuthProvider = ({ children }) => {
     return response.data;
   };
 
+  // ── Google Sign-In ────────────────────────────────────────────────────────
+  const googleLogin = async idToken => {
+    const response = await authAPI.googleLogin({ idToken });
+    const { token: t, user: u } = response.data;
+    await saveSession(t, u);
+    return response.data;
+  };
+
   // ── Logout — synchronous so it works safely inside onPress ───────────────
   const logout = () => {
     clearSessionSync();
+    // Sign out of Google to show account picker on next login
+    try {
+      const { signOutGoogle } = require('../services/googleAuth');
+      signOutGoogle();
+    } catch {}
   };
 
   // ── Profile helpers ───────────────────────────────────────────────────────
@@ -177,6 +190,7 @@ export const AuthProvider = ({ children }) => {
         verifySignupOtp,
         sendLoginOtp,
         verifyLoginOtp,
+        googleLogin,
         refreshUser,
         updateProfile,
         uploadAvatar,

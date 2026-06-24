@@ -66,6 +66,7 @@ import GetHelpScreen from './src/screens/GetHelpScreen';
 import PrivacyScreen from './src/screens/PrivacyScreen';
 import PaymentHelpScreen from './src/screens/PaymentHelpScreen';
 import ReportIssueScreen from './src/screens/ReportIssueScreen';
+import CompleteProfileScreen from './src/screens/CompleteProfileScreen';
 const { width } = Dimensions.get('window');
 
 function TabIcon({ icon, label, focused }) {
@@ -358,6 +359,11 @@ export default function App() {
               <Stack.Screen
                 name="Login"
                 component={LoginScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="CompleteProfile"
+                component={CompleteProfileScreen}
                 options={{ headerShown: false }}
               />
               <Stack.Screen

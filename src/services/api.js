@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Auto-detect: if the app can reach local backend, use it; otherwise use live
-const LOCAL_URL = 'http://192.168.0.127:5001';
+const LOCAL_URL = 'http://192.168.1.22:5001';
 const LIVE_URL = 'https://api.tripreel.in';
 // In development (debug mode), use local. In release/production, use live.
 // __DEV__ is true when running in Metro dev server, false in release builds
@@ -44,6 +44,7 @@ export const authAPI = {
   signupVerifyOtp: data => api.post('/auth/signup/verify-otp', data),
   loginSendOtp: data => api.post('/auth/login/send-otp', data),
   loginVerifyOtp: data => api.post('/auth/login/verify-otp', data),
+  googleLogin: data => api.post('/auth/google', data),
 };
 
 // Profile endpoints (logged-in user)
@@ -127,6 +128,7 @@ export const tripBookingsAPI = {
   getById: id => api.get(`/trip-bookings/${id}`),
   getRefundPreview: id => api.get(`/trip-bookings/${id}/refund-preview`),
   cancel: (id, data) => api.post(`/trip-bookings/${id}/cancel`, data),
+  syncSnapja: id => api.get(`/trip-bookings/${id}/sync-snapja`),
 };
 
 // Platform settings — public (gst_percent for display)

@@ -37,6 +37,7 @@ import {
   AlertCircle,
 } from 'lucide-react-native';
 import './../../android/app/src/utils/globalFont.js';
+import PickupMap from '../components/PickupMap';
 
 const { width } = Dimensions.get('window');
 
@@ -963,6 +964,9 @@ const DestinationDetailScreen = () => {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Where you'll be — animated map (shown when itinerary expanded) */}
+          {showFullItinerary && <PickupMap itinerary={destination.itinerary} />}
 
           {/* Divider */}
           <View

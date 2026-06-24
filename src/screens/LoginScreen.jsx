@@ -14,13 +14,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Phone, ArrowLeft } from 'lucide-react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../context/AuthContext';
 import AppModal from '../components/AppModal';
+import { signInWithGoogle } from '../services/googleAuth';
 import './../../android/app/src/utils/globalFont.js';
 
 const LoginScreen = () => {
   const navigation = useNavigation();
-  const { sendLoginOtp, verifyLoginOtp } = useAuth();
+  const { sendLoginOtp, verifyLoginOtp, googleLogin } = useAuth();
 
   const [step, setStep] = useState('phone'); // 'phone' | 'otp'
 
@@ -33,6 +36,7 @@ const LoginScreen = () => {
   const [resendIn, setResendIn] = useState(0);
 
   const [modal, setModal] = useState({ visible: false });
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const tickRef = useRef(null);
 
@@ -60,6 +64,34 @@ const LoginScreen = () => {
       secondaryLabel: 'Enter manually',
       onSecondaryPress: closeModal,
     });
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      if (result.cancelled) {
+        setGoogleLoading(false);
+        return;
+      }
+      const data = await googleLogin(result.idToken);
+      if (data.isNewUser) {
+        navigation.reset({ index: 0, routes: [{ name: 'CompleteProfile' }] });
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+      }
+    } catch (err) {
+      showModal({
+        variant: 'error',
+        title: 'Google Sign-In Failed',
+        message:
+          err?.response?.data?.message || err.message || 'Something went wrong',
+        primaryLabel: 'OK',
+        onPrimaryPress: closeModal,
+      });
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const handleSendOtp = async () => {
@@ -163,108 +195,383 @@ const LoginScreen = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <View style={{ flex: 1 }}>
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
+      {/* Background Image */}
+      <Image
+        source={require('../assets/loginbgimage.png')}
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
+        resizeMode="cover"
+      />
+      {/* Dark overlay for readability */}
+      <View
+        style={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.4)',
+        }}
+      />
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
       >
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
-            paddingHorizontal: 24,
-            paddingTop: 48,
-            paddingBottom: 32,
+            justifyContent: 'center',
+            paddingHorizontal: 20,
+            paddingBottom: 24,
+            paddingTop: 20,
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {step === 'phone' ? (
             <>
-              {/* Brand */}
-              <View style={{ marginBottom: 40 }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginBottom: 8,
-                  }}
-                >
-                  <Image
-                    source={require('../assets/tripreellogo.png')}
-                    style={{ width: 160, height: 50, resizeMode: 'contain' }}
-                  />
-                </View>
+              {/* Logo at top */}
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <Image
+                  source={require('../assets/logobgremove.jpeg')}
+                  style={{ width: 160, height: 160, borderRadius: 80 }}
+                  resizeMode="cover"
+                />
+              </View>
+
+              {/* Glass card */}
+              <View
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.82)',
+                  borderRadius: 24,
+                  padding: 24,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.4)',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 12 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 24,
+                  elevation: 12,
+                }}
+              >
                 <Text
                   style={{
                     fontSize: 22,
-                    fontWeight: '700',
+                    fontWeight: '800',
                     color: '#111827',
-                    marginTop: 24,
+                    textAlign: 'center',
                   }}
                 >
                   Welcome back 👋
                 </Text>
-                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 6 }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: '#6B7280',
+                    textAlign: 'center',
+                    marginTop: 6,
+                    marginBottom: 4,
+                  }}
+                >
                   Sign in with your phone number
                 </Text>
-              </View>
-
-              <Text style={labelStyle}>Phone</Text>
-              <View style={{ ...inputContainer, marginBottom: 28 }}>
-                <Phone size={18} color="#9CA3AF" />
-                <TextInput
-                  value={phone}
-                  onChangeText={t => setPhone(t.replace(/[^\d]/g, ''))}
-                  placeholder="10-digit phone number"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                  style={inputStyle}
+                <View
+                  style={{
+                    width: 40,
+                    height: 3,
+                    backgroundColor: '#1F8A70',
+                    borderRadius: 2,
+                    alignSelf: 'center',
+                    marginBottom: 24,
+                  }}
                 />
-              </View>
 
-              <TouchableOpacity
-                onPress={handleSendOtp}
-                disabled={sendingOtp}
-                style={{
-                  backgroundColor: sendingOtp ? '#7EC8B5' : '#1F8A70',
-                  borderRadius: 14,
-                  paddingVertical: 16,
-                  alignItems: 'center',
-                  marginBottom: 20,
-                }}
-                activeOpacity={0.85}
-              >
-                {sendingOtp ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text
-                    style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}
-                  >
-                    Send OTP
-                  </Text>
-                )}
-              </TouchableOpacity>
+                <Text style={labelStyle}>Phone</Text>
+                <View style={{ ...inputContainer, marginBottom: 20 }}>
+                  <Phone size={22} color="#9CA3AF" />
+                  <TextInput
+                    value={phone}
+                    onChangeText={t => setPhone(t.replace(/[^\d]/g, ''))}
+                    placeholder="10-digit phone number"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    style={inputStyle}
+                  />
+                </View>
 
-              <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 14, color: '#6B7280' }}>
-                  Don't have an account?{' '}
-                </Text>
                 <TouchableOpacity
-                  onPress={() => navigation.navigate('RegisterScreen')}
+                  onPress={handleSendOtp}
+                  disabled={sendingOtp}
+                  activeOpacity={0.85}
+                  style={{ marginBottom: 20 }}
                 >
-                  <Text
+                  <LinearGradient
+                    colors={['#14B8A6', '#0F766E']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={{
-                      fontSize: 14,
-                      color: '#1F8A70',
-                      fontWeight: '700',
+                      borderRadius: 14,
+                      paddingVertical: 14,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: sendingOtp ? 0.6 : 1,
                     }}
                   >
-                    Sign Up
+                    {sendingOtp ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Text
+                          style={{
+                            color: '#fff',
+                            fontSize: 16,
+                            fontWeight: '700',
+                          }}
+                        >
+                          Send OTP
+                        </Text>
+                        <Text
+                          style={{
+                            color: '#fff',
+                            fontSize: 20,
+                            marginLeft: 10,
+                          }}
+                        >
+                          →
+                        </Text>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <View
+                  style={{ flexDirection: 'row', justifyContent: 'center' }}
+                >
+                  <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                    Don't have an account?{' '}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('RegisterScreen')}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: '#1F8A70',
+                        fontWeight: '700',
+                      }}
+                    >
+                      Sign Up
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Divider */}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginVertical: 16,
+                  }}
+                >
+                  <View
+                    style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }}
+                  />
+                  <Text
+                    style={{
+                      marginHorizontal: 12,
+                      fontSize: 13,
+                      color: '#9CA3AF',
+                    }}
+                  >
+                    or
+                  </Text>
+                  <View
+                    style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }}
+                  />
+                </View>
+
+                {/* Google Sign-In */}
+                <TouchableOpacity
+                  onPress={handleGoogleSignIn}
+                  disabled={googleLoading}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: '#fff',
+                    borderWidth: 1,
+                    borderColor: '#E5E7EB',
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                    gap: 10,
+                    opacity: googleLoading ? 0.6 : 1,
+                  }}
+                >
+                  {googleLoading ? (
+                    <ActivityIndicator size="small" color="#4285F4" />
+                  ) : (
+                    <Image
+                      source={require('../assets/google.png')}
+                      style={{ width: 20, height: 20 }}
+                    />
+                  )}
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: '600',
+                      color: '#374151',
+                    }}
+                  >
+                    Continue with Google
                   </Text>
                 </TouchableOpacity>
+
+                {/* Trust badges — inside card */}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-around',
+                    marginTop: 16,
+                    paddingTop: 16,
+                    borderTopWidth: 1,
+                    borderTopColor: '#F3F4F6',
+                  }}
+                >
+                  <View style={{ alignItems: 'center' }}>
+                    <View
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 21,
+                        borderWidth: 1.5,
+                        borderColor: '#1F8A70',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 14 }}>
+                        <MaterialCommunityIcons
+                          name="shield-check-outline"
+                          size={18}
+                          color="#1F8A70"
+                        />
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginTop: 4,
+                      }}
+                    >
+                      Secure & Private
+                    </Text>
+                    <Text style={{ fontSize: 8, color: '#9CA3AF' }}>
+                      Your data is safe with us
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <View
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 21,
+                        borderWidth: 1.5,
+                        borderColor: '#F59E0B',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 14 }}>
+                        <MaterialCommunityIcons
+                          name="lightning-bolt-outline"
+                          size={18}
+                          color="#F59E0B"
+                        />
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginTop: 4,
+                      }}
+                    >
+                      Quick & Easy
+                    </Text>
+                    <Text style={{ fontSize: 8, color: '#9CA3AF' }}>
+                      Get started in seconds
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    <View
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 21,
+                        borderWidth: 1.5,
+                        borderColor: '#EF4444',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 14 }}>
+                        <MaterialCommunityIcons
+                          name="map-marker-outline"
+                          size={18}
+                          color="#EF4444"
+                        />
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginTop: 4,
+                      }}
+                    >
+                      Made for Travelers
+                    </Text>
+                    <Text style={{ fontSize: 8, color: '#9CA3AF' }}>
+                      Share. Explore. Inspire.
+                    </Text>
+                  </View>
+                </View>
               </View>
+
+              {/* Terms — below card */}
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: 'rgba(255,255,255,0.85)',
+                  textAlign: 'center',
+                  marginTop: 14,
+                }}
+              >
+                🔒 By continuing, you agree to our{' '}
+                <Text
+                  style={{ color: '#14B8A6', fontWeight: '600' }}
+                  onPress={() => navigation.navigate('Privacy')}
+                >
+                  Terms of Service
+                </Text>{' '}
+                and{' '}
+                <Text
+                  style={{ color: '#14B8A6', fontWeight: '600' }}
+                  onPress={() => navigation.navigate('Privacy')}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
             </>
           ) : (
             <>
@@ -396,7 +703,7 @@ const LoginScreen = () => {
       </KeyboardAvoidingView>
 
       <AppModal {...modal} onClose={closeModal} />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -414,7 +721,7 @@ const inputContainer = {
   borderColor: '#E5E7EB',
   borderRadius: 12,
   paddingHorizontal: 14,
-  paddingVertical: 13,
+  paddingVertical: 10,
   marginBottom: 16,
   backgroundColor: '#F9FAFB',
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,8 @@ import {
   Navigation,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Calendar,
   Users,
   Star,
@@ -60,11 +62,81 @@ const SearchScreen = () => {
   const [popularDests, setPopularDests] = useState([]);
   const [allDests, setAllDests] = useState([]);
 
-  // Date filter
-  const [selectedDate, setSelectedDate] = useState(null); // Date object or null
-  const [dateOptions, setDateOptions] = useState([]);
-  const [monthOptions, setMonthOptions] = useState([]);
-  const [selectedMonthKey, setSelectedMonthKey] = useState(null);
+  // Date filter — range selection
+  const [selectedDate, setSelectedDate] = useState(null); // start date
+  const [selectedEndDate, setSelectedEndDate] = useState(null); // end date
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const maxCalDate = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 2);
+    return d;
+  }, []);
+  const DAY_NAMES = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  const getDaysInMonth = useCallback((y, m) => {
+    const firstDay = new Date(y, m, 1).getDay();
+    const total = new Date(y, m + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < firstDay; i++) cells.push(null);
+    for (let d = 1; d <= total; d++) cells.push(d);
+    return cells;
+  }, []);
+
+  const canGoPrev = !(
+    calendarYear === today.getFullYear() && calendarMonth === today.getMonth()
+  );
+  const canGoNext = !(
+    calendarYear === maxCalDate.getFullYear() &&
+    calendarMonth === maxCalDate.getMonth()
+  );
+
+  const goPrev = useCallback(() => {
+    if (!canGoPrev) return;
+    if (calendarMonth === 0) {
+      setCalendarYear(y => y - 1);
+      setCalendarMonth(11);
+    } else setCalendarMonth(m => m - 1);
+  }, [canGoPrev, calendarMonth]);
+
+  const goNext = useCallback(() => {
+    if (!canGoNext) return;
+    if (calendarMonth === 11) {
+      setCalendarYear(y => y + 1);
+      setCalendarMonth(0);
+    } else setCalendarMonth(m => m + 1);
+  }, [canGoNext, calendarMonth]);
+
+  const pickShortcut = useCallback(daysFromToday => {
+    const now = new Date();
+    const d = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + daysFromToday,
+      12,
+      0,
+      0,
+      0,
+    );
+    setSelectedDate(d);
+    setSelectedEndDate(null); // shortcuts = single day, no range
+    setCalendarYear(d.getFullYear());
+    setCalendarMonth(d.getMonth());
+  }, []);
+
+  const calendarMonthLabel = useMemo(
+    () =>
+      new Date(calendarYear, calendarMonth, 1).toLocaleDateString('en-IN', {
+        month: 'long',
+        year: 'numeric',
+      }),
+    [calendarYear, calendarMonth],
+  );
 
   // Guest filter
   const [adults, setAdults] = useState(1);
@@ -128,77 +200,58 @@ const SearchScreen = () => {
         setAllDests(dests);
       })
       .catch(() => {});
-
-    // Generate next 180 days (~6 months) as date options
-    const days = [];
-    const today = new Date();
-    for (let i = 0; i < 180; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      days.push(d);
-    }
-    setDateOptions(days);
-
-    // Build month tabs from the day range so users can browse beyond one month
-    const months = [];
-    const seenMonths = new Set();
-    days.forEach(d => {
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
-      if (!seenMonths.has(key)) {
-        seenMonths.add(key);
-        months.push({ key, year: d.getFullYear(), month: d.getMonth() });
-      }
-    });
-    setMonthOptions(months);
-    if (months.length > 0) setSelectedMonthKey(months[0].key);
   }, []);
 
-  // Search API call — includes date and guests filters
-  const doSearch = useCallback(
-    async query => {
-      if (!query.trim() && !selectedDate) return;
-      setLoading(true);
-      setShowResults(true);
-      try {
-        const params = { limit: 50 };
-        if (query.trim()) params.search = query;
-        if (selectedDate) {
-          params.date = selectedDate.toISOString().split('T')[0];
-        }
-        const totalGuests = adults + children;
-        if (totalGuests > 0) params.guests = totalGuests;
-        const res = await packagesAPI.getAll(params);
-        setResults(res.data?.packages || []);
-      } catch {
-        setResults([]);
-      } finally {
-        setLoading(false);
+  // Search — accepts text + date/range explicitly, no stale closure possible
+  const doSearch = async (query, startDate, endDate) => {
+    if (!query.trim() && !startDate) return;
+    setLoading(true);
+    setShowResults(true);
+    try {
+      const params = { limit: 50 };
+      if (query.trim()) params.search = query;
+      if (startDate && endDate) {
+        // Range: show packages that start anywhere in the window
+        params.dateFrom = startDate.toISOString().split('T')[0];
+        params.dateTo = endDate.toISOString().split('T')[0];
+      } else if (startDate) {
+        // Single day
+        params.date = startDate.toISOString().split('T')[0];
       }
-    },
-    [selectedDate, adults, children],
-  );
+      const totalGuests = adults + children;
+      if (totalGuests > 0) params.guests = totalGuests;
+      const res = await packagesAPI.getAll(params);
+      setResults(res.data?.packages || []);
+    } catch {
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleSearch = () => doSearch(searchText);
+  const handleSearch = () =>
+    doSearch(searchText, selectedDate, selectedEndDate);
 
   const handleClearAll = () => {
     setSearchText('');
     setResults([]);
     setShowResults(false);
     setSelectedDate(null);
+    setSelectedEndDate(null);
     setAdults(1);
     setChildren(0);
   };
 
   const handleSelectSuggestion = name => {
     setSearchText(name);
-    doSearch(name);
+    doSearch(name, selectedDate, selectedEndDate);
   };
 
   const handleNearby = () => {
     const state = gpsState || user?.state || '';
     if (state) {
       setSearchText(state);
-      doSearch(state);
+      doSearch(state, selectedDate, selectedEndDate);
     }
   };
 
@@ -682,7 +735,15 @@ const SearchScreen = () => {
                 <Text
                   style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}
                 >
-                  {selectedDate
+                  {selectedDate && selectedEndDate
+                    ? `${selectedDate.toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                      })} → ${selectedEndDate.toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                      })}`
+                    : selectedDate
                     ? selectedDate.toLocaleDateString('en-IN', {
                         day: '2-digit',
                         month: 'short',
@@ -704,131 +765,305 @@ const SearchScreen = () => {
 
           {whenExpanded && (
             <View style={{ marginTop: 14 }}>
-              {/* Month tabs — lets users browse up to 6 months ahead */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, marginBottom: 12 }}
-              >
-                {monthOptions.map(m => {
-                  const isActive = m.key === selectedMonthKey;
-                  const label = new Date(m.year, m.month, 1).toLocaleDateString(
-                    'en-IN',
-                    {
-                      month: 'long',
-                      year: 'numeric',
-                    },
-                  );
+              {/* Quick shortcuts */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                {[
+                  {
+                    label: 'Today',
+                    sub: new Date().toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                    }),
+                    days: 0,
+                  },
+                  {
+                    label: 'Tomorrow',
+                    sub: new Date(Date.now() + 86400000).toLocaleDateString(
+                      'en-IN',
+                      { day: '2-digit', month: 'short' },
+                    ),
+                    days: 1,
+                  },
+                  {
+                    label: 'This weekend',
+                    sub: (() => {
+                      const d = new Date();
+                      const sat = new Date(d);
+                      sat.setDate(d.getDate() + (6 - d.getDay()));
+                      const sun = new Date(sat);
+                      sun.setDate(sat.getDate() + 1);
+                      return `${sat.toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                      })} – ${sun.toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                      })}`;
+                    })(),
+                    days: 6 - new Date().getDay(),
+                  },
+                ].map(sc => {
+                  const scDate = new Date(today);
+                  scDate.setDate(today.getDate() + sc.days);
+                  const isActive =
+                    selectedDate &&
+                    selectedDate.toDateString() === scDate.toDateString();
                   return (
                     <TouchableOpacity
-                      key={m.key}
-                      onPress={() => setSelectedMonthKey(m.key)}
+                      key={sc.label}
+                      onPress={() => pickShortcut(sc.days)}
                       style={{
-                        paddingHorizontal: 14,
-                        paddingVertical: 8,
-                        borderRadius: 20,
+                        flex: 1,
+                        borderRadius: 12,
                         borderWidth: 1.5,
                         borderColor: isActive ? '#1F8A70' : '#E5E7EB',
-                        backgroundColor: isActive ? '#1F8A70' : '#F9FAFB',
+                        backgroundColor: isActive ? '#E6F4EF' : '#fff',
+                        paddingVertical: 10,
+                        alignItems: 'center',
                       }}
                     >
                       <Text
                         style={{
                           fontSize: 13,
-                          fontWeight: '600',
-                          color: isActive ? '#fff' : '#374151',
+                          fontWeight: '700',
+                          color: isActive ? '#1F8A70' : '#111827',
                         }}
                       >
-                        {label}
+                        {sc.label}
+                      </Text>
+                      <Text
+                        style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}
+                      >
+                        {sc.sub}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
-              </ScrollView>
+              </View>
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8 }}
+              {/* Month nav header */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 12,
+                }}
               >
-                {/* Any date option */}
                 <TouchableOpacity
-                  onPress={() => setSelectedDate(null)}
-                  style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    borderRadius: 10,
-                    borderWidth: 1.5,
-                    borderColor: !selectedDate ? '#1F8A70' : '#E5E7EB',
-                    backgroundColor: !selectedDate ? '#E6F4EF' : '#F9FAFB',
-                  }}
+                  onPress={goPrev}
+                  disabled={!canGoPrev}
+                  style={{ padding: 8, opacity: canGoPrev ? 1 : 0.3 }}
                 >
+                  <ChevronLeft size={20} color="#374151" />
+                </TouchableOpacity>
+                <Text
+                  style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}
+                >
+                  {calendarMonthLabel}
+                </Text>
+                <TouchableOpacity
+                  onPress={goNext}
+                  disabled={!canGoNext}
+                  style={{ padding: 8, opacity: canGoNext ? 1 : 0.3 }}
+                >
+                  <ChevronRight size={20} color="#374151" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Day names row */}
+              <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                {DAY_NAMES.map((n, i) => (
                   <Text
+                    key={i}
                     style={{
-                      fontSize: 13,
+                      flex: 1,
+                      textAlign: 'center',
+                      fontSize: 12,
                       fontWeight: '600',
-                      color: !selectedDate ? '#1F8A70' : '#374151',
+                      color: '#9CA3AF',
                     }}
                   >
-                    Any
+                    {n}
                   </Text>
-                </TouchableOpacity>
-                {dateOptions
-                  .filter(
-                    d =>
-                      `${d.getFullYear()}-${d.getMonth()}` === selectedMonthKey,
-                  )
-                  .map((d, i) => {
-                    const isSelected =
-                      selectedDate &&
-                      d.toDateString() === selectedDate.toDateString();
+                ))}
+              </View>
+
+              {/* Calendar grid */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                {getDaysInMonth(calendarYear, calendarMonth).map((day, i) => {
+                  if (!day)
                     return (
-                      <TouchableOpacity
+                      <View
                         key={i}
-                        onPress={() => setSelectedDate(d)}
+                        style={{ width: '14.28%', aspectRatio: 1 }}
+                      />
+                    );
+                  const cellDate = new Date(
+                    calendarYear,
+                    calendarMonth,
+                    day,
+                    12,
+                    0,
+                    0,
+                    0,
+                  );
+                  const isPast = cellDate < today;
+                  const isStart =
+                    selectedDate &&
+                    cellDate.toDateString() === selectedDate.toDateString();
+                  const isEnd =
+                    selectedEndDate &&
+                    cellDate.toDateString() === selectedEndDate.toDateString();
+                  const isInRange =
+                    selectedDate &&
+                    selectedEndDate &&
+                    cellDate > selectedDate &&
+                    cellDate < selectedEndDate;
+                  const isSelected = isStart || isEnd;
+                  const isToday =
+                    cellDate.toDateString() === today.toDateString();
+                  return (
+                    <TouchableOpacity
+                      key={i}
+                      onPress={() => {
+                        if (isPast) return;
+                        if (!selectedDate || selectedEndDate) {
+                          // Start fresh: first tap = start date
+                          setSelectedDate(cellDate);
+                          setSelectedEndDate(null);
+                        } else {
+                          // Second tap: set end if after start, else reset start
+                          if (cellDate > selectedDate) {
+                            setSelectedEndDate(cellDate);
+                          } else {
+                            setSelectedDate(cellDate);
+                            setSelectedEndDate(null);
+                          }
+                        }
+                      }}
+                      activeOpacity={isPast ? 1 : 0.7}
+                      style={{
+                        width: '14.28%',
+                        aspectRatio: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <View
                         style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 8,
-                          borderRadius: 10,
-                          borderWidth: 1.5,
-                          borderColor: isSelected ? '#1F8A70' : '#E5E7EB',
-                          backgroundColor: isSelected ? '#E6F4EF' : '#F9FAFB',
+                          width: 34,
+                          height: 34,
+                          borderRadius: 17,
                           alignItems: 'center',
-                          minWidth: 52,
+                          justifyContent: 'center',
+                          borderWidth: isInRange ? 1 : 0,
+                          borderColor: isInRange ? '#1F8A70' : 'transparent',
+                          borderStyle: 'dashed',
+                          backgroundColor: isSelected
+                            ? '#1F8A70'
+                            : isToday
+                            ? '#E6F4EF'
+                            : 'transparent',
                         }}
                       >
                         <Text
                           style={{
-                            fontSize: 11,
-                            color: isSelected ? '#1F8A70' : '#9CA3AF',
-                            fontWeight: '500',
+                            fontSize: 14,
+                            fontWeight: isToday || isSelected ? '700' : '400',
+                            color: isSelected
+                              ? '#fff'
+                              : isPast
+                              ? '#CBD5E1'
+                              : isToday
+                              ? '#1F8A70'
+                              : isInRange
+                              ? '#1F8A70'
+                              : '#111827',
+                            textDecorationLine: isPast
+                              ? 'line-through'
+                              : 'none',
                           }}
                         >
-                          {d.toLocaleDateString('en-IN', { weekday: 'short' })}
+                          {day}
                         </Text>
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: '700',
-                            color: isSelected ? '#1F8A70' : '#111827',
-                            marginTop: 2,
-                          }}
-                        >
-                          {d.getDate()}
-                        </Text>
-                        <Text
-                          style={{
-                            fontSize: 10,
-                            color: isSelected ? '#1F8A70' : '#9CA3AF',
-                            marginTop: 1,
-                          }}
-                        >
-                          {d.toLocaleDateString('en-IN', { month: 'short' })}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-              </ScrollView>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Range hint + clear */}
+              <View style={{ marginTop: 12, alignItems: 'center' }}>
+                {!selectedDate && (
+                  <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
+                    Tap a date to select, tap again to set end date
+                  </Text>
+                )}
+                {selectedDate && !selectedEndDate && (
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: '#1F8A70',
+                      fontWeight: '600',
+                    }}
+                  >
+                    From{' '}
+                    {selectedDate.toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                    })}{' '}
+                    — tap another date to set end
+                  </Text>
+                )}
+                {selectedDate && selectedEndDate && (
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: '#1F8A70',
+                      fontWeight: '600',
+                    }}
+                  >
+                    {selectedDate.toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                    })}{' '}
+                    →{' '}
+                    {selectedEndDate.toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                    })}
+                  </Text>
+                )}
+                {selectedDate && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedDate(null);
+                      setSelectedEndDate(null);
+                      doSearch(searchText, null, null);
+                    }}
+                    style={{
+                      marginTop: 6,
+                      paddingHorizontal: 18,
+                      paddingVertical: 6,
+                      borderRadius: 20,
+                      borderWidth: 1.5,
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: '#374151',
+                        fontWeight: '600',
+                      }}
+                    >
+                      Clear dates
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           )}
         </View>

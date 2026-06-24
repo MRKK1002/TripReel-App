@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "551822296875",
-    "project_id": "tripreel-c6e61",
-    "storage_bucket": "tripreel-c6e61.firebasestorage.app"
+    "project_number": "439454658068",
+    "project_id": "treepreel",
+    "storage_bucket": "treepreel.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:551822296875:android:52ceee4307072fa269276e",
+        "mobilesdk_app_id": "1:439454658068:android:8dbc4a5aaebe93ec2e8101",
         "android_client_info": {
           "package_name": "com.tripreel.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "439454658068-libtvctorfecg3dccvim9lp2rqft192i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tripreel.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "439454658068-rcaqvvrodh44la69ua8pvri9lblkjn7k.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyDSgeDmlhNgwFZ_3b45oe_-61vHMNY0KmE"
+          "current_key": "AIzaSyDANuErspZ8lG3kCfk0mKFjyMCwtoaRsfg"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "439454658068-rcaqvvrodh44la69ua8pvri9lblkjn7k.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

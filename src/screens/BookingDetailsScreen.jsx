@@ -68,7 +68,7 @@ function fmtMoney(n) {
 }
 
 // ── Track Step ────────────────────────────────────────────────────────────────
-const TrackStep = ({ label, sublabel, status, date, isLast }) => {
+const TrackStep = ({ label, sublabel, status, date, isLast, otpTag }) => {
   const spinAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -143,6 +143,42 @@ const TrackStep = ({ label, sublabel, status, date, isLast }) => {
             {sublabel}
           </Text>
         )}
+        {otpTag && (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginTop: 6,
+              backgroundColor: '#FEF9C3',
+              borderWidth: 1,
+              borderColor: '#FDE68A',
+              borderRadius: 8,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              alignSelf: 'flex-start',
+              gap: 6,
+            }}
+          >
+            <Text style={{ fontSize: 11, color: '#92400E', fontWeight: '500' }}>
+              🔐 Addon OTP
+            </Text>
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: '800',
+                color: '#1F8A70',
+                letterSpacing: 4,
+              }}
+            >
+              {otpTag.otp}
+            </Text>
+            {otpTag.expiresAt ? (
+              <Text style={{ fontSize: 10, color: '#9CA3AF' }}>
+                valid till {otpTag.expiresAt}
+              </Text>
+            ) : null}
+          </View>
+        )}
         <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
           {date}
         </Text>
@@ -184,6 +220,22 @@ const BookingDetailsScreen = () => {
       .catch(() => setFetchError('Could not load booking details'))
       .finally(() => setFetchLoading(false));
   }, [routeBookingId, routeBooking]);
+
+  // Sync Snapja addon status when viewing a booking with addons
+  useEffect(() => {
+    if (!booking?._id || !booking?.addonDispatched) return;
+    tripBookingsAPI
+      .syncSnapja(booking._id)
+      .then(res => {
+        if (res.data?.updated && res.data?.snapjaBookings) {
+          setBooking(prev => ({
+            ...prev,
+            snapjaBookings: res.data.snapjaBookings,
+          }));
+        }
+      })
+      .catch(() => {});
+  }, [booking?._id, booking?.addonDispatched]);
 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -428,6 +480,110 @@ const BookingDetailsScreen = () => {
       sublabel: booking.cancelReason || 'This booking was cancelled',
       status: 'done',
       date: '',
+    });
+  }
+
+  // Add Snapja addon tracking steps if addons were dispatched
+  const hasSnapjaData =
+    booking.addonDispatched &&
+    booking.snapjaBookings &&
+    Object.keys(booking.snapjaBookings).length > 0;
+  if (hasSnapjaData) {
+    const snapjaEntries = Object.entries(booking.snapjaBookings || {});
+    snapjaEntries.forEach(([key, snap]) => {
+      const [addonName, dayIdxStr] = key.split('_');
+      const dayIdx = Number(dayIdxStr);
+      const dayLabel = `Day ${dayIdx + 1}`;
+      const isReel = addonName?.toLowerCase().includes('reel');
+      const person = isReel ? 'Videographer' : 'Photographer';
+      const svcLabel = isReel ? '🎬' : '📷';
+
+      const otpExpiry = snap.otpExpiresAt
+        ? new Date(snap.otpExpiresAt).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '';
+
+      // Step 1 (oldest): "Notified photographer" — we sent to Snapja
+      trackingSteps.push({
+        label: `${svcLabel} Notified ${person} — ${dayLabel}`,
+        sublabel: `Request sent to Snapja (ID: ${snap.bookingId})`,
+        status: 'done',
+        date: snap.dispatchedAt
+          ? new Date(snap.dispatchedAt).toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+            })
+          : '',
+        otpTag: null,
+      });
+
+      // Step 2 (newest): waiting or confirmed depending on Snapja status
+      if (snap.otp) {
+        trackingSteps.push({
+          label: `${svcLabel} ${person} Confirmed — ${dayLabel}`,
+          sublabel: `Your ${person.toLowerCase()} has been assigned`,
+          status: 'done',
+          date: snap.dispatchedAt
+            ? new Date(snap.dispatchedAt).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+              })
+            : '',
+          otpTag: { otp: snap.otp, expiresAt: otpExpiry },
+        });
+      } else {
+        trackingSteps.push({
+          label: `${svcLabel} Waiting for ${person} — ${dayLabel}`,
+          sublabel: `Snapja is assigning a ${person.toLowerCase()} for your trip`,
+          status: 'inprogress',
+          date: '',
+          otpTag: null,
+        });
+      }
+    });
+  } else if (booking.addonDispatched && booking.addonNames?.length > 0) {
+    // Legacy: dispatched before snapjaBookings was implemented
+    booking.addonNames.forEach(name => {
+      const isReel = name?.toLowerCase().includes('reel');
+      const person = isReel ? 'Videographer' : 'Photographer';
+      const svcLabel = isReel ? '🎬' : '📷';
+      trackingSteps.push({
+        label: `${svcLabel} Notified ${person}`,
+        sublabel: `Your ${person.toLowerCase()} request has been sent`,
+        status: 'done',
+        date: booking.addonDispatchedAt
+          ? new Date(booking.addonDispatchedAt).toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+            })
+          : '',
+        otpTag: null,
+      });
+      trackingSteps.push({
+        label: `${svcLabel} Waiting for ${person}`,
+        sublabel: `${person} will be assigned before your trip`,
+        status: 'inprogress',
+        date: '',
+        otpTag: null,
+      });
+    });
+  } else if (booking.addonNames?.length > 0 && !booking.addonDispatched) {
+    // Addons booked but not yet dispatched (still in refund window)
+    booking.addonNames.forEach(name => {
+      const isReel = name?.toLowerCase().includes('reel');
+      const person = isReel ? 'Videographer' : 'Photographer';
+      const svcLabel = isReel ? '🎬' : '📷';
+      trackingSteps.push({
+        label: `${svcLabel} ${person} Requested`,
+        sublabel: `${person} will be notified closer to your trip date`,
+        status: 'inprogress',
+        date: '',
+        otpTag: null,
+      });
     });
   }
 
@@ -902,6 +1058,7 @@ const BookingDetailsScreen = () => {
               status={step.status}
               date={step.date}
               isLast={i === reversedSteps.length - 1}
+              otpTag={step.otpTag || null}
             />
           ))}
         </View>

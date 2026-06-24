@@ -112,10 +112,22 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // Pin Google Play Services Location to the version react-native-geolocation-service
+    // was compiled against (18.0.0). In 21.x, FusedLocationProviderClient became an
+    // interface, which breaks the library (IncompatibleClassChangeError at runtime).
+    implementation("com.google.android.gms:play-services-location:18.0.0")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+// Force a single play-services-location version across all transitive deps
+configurations.all {
+    resolutionStrategy {
+        force "com.google.android.gms:play-services-location:18.0.0"
     }
 }
 

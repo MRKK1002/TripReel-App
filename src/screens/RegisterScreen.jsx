@@ -450,8 +450,25 @@ const RegisterScreen = () => {
 
   // ────────────────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <View style={{ flex: 1 }}>
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
+      <Image
+        source={require('../assets/signupbgimage.png')}
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
+        resizeMode="cover"
+      />
+      <View
+        style={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.35)',
+        }}
+      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -459,8 +476,9 @@ const RegisterScreen = () => {
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
-            paddingHorizontal: 24,
-            paddingTop: 36,
+            justifyContent: 'flex-end',
+            paddingHorizontal: 20,
+            paddingTop: 60,
             paddingBottom: 120,
           }}
           keyboardShouldPersistTaps="handled"
@@ -470,234 +488,255 @@ const RegisterScreen = () => {
           {/* ── STEP 1: Details ────────────────────────────────────────────── */}
           {step === 'details' && (
             <>
-              {/* Brand */}
-              <View style={{ marginBottom: 24 }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginBottom: 8,
-                  }}
-                >
-                  <Image
-                    source={require('../assets/tripreellogo.png')}
-                    style={{ width: 160, height: 50, resizeMode: 'contain' }}
-                  />
-                </View>
+              {/* Logo */}
+              <View style={{ alignItems: 'center', marginBottom: 32 }}>
+                <Image
+                  source={require('../assets/logobgremove.jpeg')}
+                  style={{ width: 140, height: 140, borderRadius: 70 }}
+                  resizeMode="cover"
+                />
+              </View>
+
+              <View
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.82)',
+                  borderRadius: 24,
+                  padding: 24,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.4)',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 12 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 24,
+                  elevation: 12,
+                }}
+              >
                 <Text
                   style={{
                     fontSize: 22,
-                    fontWeight: '700',
+                    fontWeight: '800',
                     color: '#111827',
-                    marginTop: 16,
+                    textAlign: 'center',
                   }}
                 >
                   Create account ✈️
                 </Text>
-                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 6 }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: '#6B7280',
+                    textAlign: 'center',
+                    marginTop: 6,
+                    marginBottom: 20,
+                  }}
+                >
                   We'll send a one-time code to verify your number
                 </Text>
-              </View>
 
-              {/* ── Avatar picker ─────────────────────────────────────────── */}
-              <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                {/* ── Avatar picker ─────────────────────────────────────────── */}
+                <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                  <TouchableOpacity
+                    onPress={handlePickPhoto}
+                    activeOpacity={0.85}
+                  >
+                    <View
+                      style={[
+                        styles.avatarCircle,
+                        avatarLocalUri
+                          ? { borderColor: '#1F8A70', borderStyle: 'solid' }
+                          : {},
+                      ]}
+                    >
+                      {avatarLocalUri ? (
+                        <Image
+                          source={{ uri: avatarLocalUri }}
+                          style={styles.avatarImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={{ alignItems: 'center' }}>
+                          <Camera size={26} color="#9CA3AF" />
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              color: '#9CA3AF',
+                              marginTop: 4,
+                            }}
+                          >
+                            Add Photo
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    {/* Camera badge */}
+                    <View style={styles.cameraBadge}>
+                      <Camera size={12} color="#fff" />
+                    </View>
+                  </TouchableOpacity>
+                  <Text
+                    style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}
+                  >
+                    {avatarLocalUri
+                      ? '✓ Photo selected'
+                      : 'Profile photo (optional)'}
+                  </Text>
+                </View>
+
+                {/* ── Fields ───────────────────────────────────────────────── */}
+                <Text style={labelStyle}>Full Name</Text>
+                <View style={inputContainer}>
+                  <User size={18} color="#9CA3AF" />
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Enter your full name"
+                    placeholderTextColor="#9CA3AF"
+                    style={inputStyle}
+                  />
+                </View>
+
+                <Text style={labelStyle}>Email</Text>
+                <View style={inputContainer}>
+                  <Mail size={18} color="#9CA3AF" />
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="Enter your email"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={inputStyle}
+                  />
+                </View>
+
+                <Text style={labelStyle}>Phone</Text>
+                <View style={inputContainer}>
+                  <Phone size={18} color="#9CA3AF" />
+                  <TextInput
+                    value={phone}
+                    onChangeText={t => setPhone(t.replace(/[^\d]/g, ''))}
+                    placeholder="10-digit phone number"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    style={inputStyle}
+                  />
+                </View>
+
+                <Text style={labelStyle}>Country</Text>
                 <TouchableOpacity
-                  onPress={handlePickPhoto}
-                  activeOpacity={0.85}
+                  onPress={() => setCountryPickerVisible(true)}
+                  style={{
+                    ...inputContainer,
+                    marginBottom: 16,
+                    justifyContent: 'space-between',
+                  }}
+                  activeOpacity={0.8}
                 >
                   <View
-                    style={[
-                      styles.avatarCircle,
-                      avatarLocalUri
-                        ? { borderColor: '#1F8A70', borderStyle: 'solid' }
-                        : {},
-                    ]}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}
                   >
-                    {avatarLocalUri ? (
-                      <Image
-                        source={{ uri: avatarLocalUri }}
-                        style={styles.avatarImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={{ alignItems: 'center' }}>
-                        <Camera size={26} color="#9CA3AF" />
+                    <MapPin size={18} color="#9CA3AF" />
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: country ? '#111827' : '#9CA3AF',
+                      }}
+                    >
+                      {country || 'Select your country'}
+                    </Text>
+                  </View>
+                  <ChevronDown size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+
+                {/* Show state picker only for India */}
+                {country === 'India' && (
+                  <>
+                    <Text style={labelStyle}>Home State</Text>
+                    <TouchableOpacity
+                      onPress={() => setStatePickerVisible(true)}
+                      style={{
+                        ...inputContainer,
+                        marginBottom: 28,
+                        justifyContent: 'space-between',
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 10,
+                        }}
+                      >
+                        <MapPin size={18} color="#9CA3AF" />
                         <Text
                           style={{
-                            fontSize: 11,
-                            color: '#9CA3AF',
-                            marginTop: 4,
+                            fontSize: 14,
+                            color: state ? '#111827' : '#9CA3AF',
                           }}
                         >
-                          Add Photo
+                          {state || 'Select your state'}
                         </Text>
                       </View>
-                    )}
-                  </View>
-                  {/* Camera badge */}
-                  <View style={styles.cameraBadge}>
-                    <Camera size={12} color="#fff" />
-                  </View>
+                      <ChevronDown size={18} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </>
+                )}
+                {country !== 'India' && <View style={{ marginBottom: 28 }} />}
+
+                <TouchableOpacity
+                  onPress={handleSendOtp}
+                  disabled={sendingOtp}
+                  style={{
+                    backgroundColor: sendingOtp ? '#7EC8B5' : '#1F8A70',
+                    borderRadius: 14,
+                    paddingVertical: 16,
+                    alignItems: 'center',
+                    marginBottom: 20,
+                  }}
+                  activeOpacity={0.85}
+                >
+                  {sendingOtp ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text
+                      style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}
+                    >
+                      Send OTP
+                    </Text>
+                  )}
                 </TouchableOpacity>
-                <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}>
-                  {avatarLocalUri
-                    ? '✓ Photo selected'
-                    : 'Profile photo (optional)'}
-                </Text>
-              </View>
 
-              {/* ── Fields ───────────────────────────────────────────────── */}
-              <Text style={labelStyle}>Full Name</Text>
-              <View style={inputContainer}>
-                <User size={18} color="#9CA3AF" />
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Enter your full name"
-                  placeholderTextColor="#9CA3AF"
-                  style={inputStyle}
-                />
-              </View>
-
-              <Text style={labelStyle}>Email</Text>
-              <View style={inputContainer}>
-                <Mail size={18} color="#9CA3AF" />
-                <TextInput
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="Enter your email"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={inputStyle}
-                />
-              </View>
-
-              <Text style={labelStyle}>Phone</Text>
-              <View style={inputContainer}>
-                <Phone size={18} color="#9CA3AF" />
-                <TextInput
-                  value={phone}
-                  onChangeText={t => setPhone(t.replace(/[^\d]/g, ''))}
-                  placeholder="10-digit phone number"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                  style={inputStyle}
-                />
-              </View>
-
-              <Text style={labelStyle}>Country</Text>
-              <TouchableOpacity
-                onPress={() => setCountryPickerVisible(true)}
-                style={{
-                  ...inputContainer,
-                  marginBottom: 16,
-                  justifyContent: 'space-between',
-                }}
-                activeOpacity={0.8}
-              >
                 <View
                   style={{
                     flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 10,
+                    justifyContent: 'center',
+                    marginTop: 4,
                   }}
                 >
-                  <MapPin size={18} color="#9CA3AF" />
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: country ? '#111827' : '#9CA3AF',
-                    }}
-                  >
-                    {country || 'Select your country'}
+                  <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                    Already have an account?{' '}
                   </Text>
-                </View>
-                <ChevronDown size={18} color="#9CA3AF" />
-              </TouchableOpacity>
-
-              {/* Show state picker only for India */}
-              {country === 'India' && (
-                <>
-                  <Text style={labelStyle}>Home State</Text>
                   <TouchableOpacity
-                    onPress={() => setStatePickerVisible(true)}
-                    style={{
-                      ...inputContainer,
-                      marginBottom: 28,
-                      justifyContent: 'space-between',
-                    }}
-                    activeOpacity={0.8}
+                    onPress={() => navigation.navigate('Login')}
                   >
-                    <View
+                    <Text
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 10,
+                        fontSize: 14,
+                        color: '#1F8A70',
+                        fontWeight: '700',
                       }}
                     >
-                      <MapPin size={18} color="#9CA3AF" />
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          color: state ? '#111827' : '#9CA3AF',
-                        }}
-                      >
-                        {state || 'Select your state'}
-                      </Text>
-                    </View>
-                    <ChevronDown size={18} color="#9CA3AF" />
+                      Log In
+                    </Text>
                   </TouchableOpacity>
-                </>
-              )}
-              {country !== 'India' && <View style={{ marginBottom: 28 }} />}
-
-              <TouchableOpacity
-                onPress={handleSendOtp}
-                disabled={sendingOtp}
-                style={{
-                  backgroundColor: sendingOtp ? '#7EC8B5' : '#1F8A70',
-                  borderRadius: 14,
-                  paddingVertical: 16,
-                  alignItems: 'center',
-                  marginBottom: 20,
-                }}
-                activeOpacity={0.85}
-              >
-                {sendingOtp ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text
-                    style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}
-                  >
-                    Send OTP
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                  marginTop: 4,
-                }}
-              >
-                <Text style={{ fontSize: 14, color: '#6B7280' }}>
-                  Already have an account?{' '}
-                </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: '#1F8A70',
-                      fontWeight: '700',
-                    }}
-                  >
-                    Log In
-                  </Text>
-                </TouchableOpacity>
+                </View>
               </View>
             </>
           )}
@@ -855,7 +894,7 @@ const RegisterScreen = () => {
       />
 
       <AppModal {...modal} onClose={closeModal} />
-    </SafeAreaView>
+    </View>
   );
 };
 

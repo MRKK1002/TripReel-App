@@ -31,6 +31,11 @@
         android:value="tripreel_notifications"
         tools:replace="android:value" />
 
+      <!-- Google Maps API Key -->
+      <meta-data
+        android:name="com.google.android.geo.API_KEY"
+        android:value="AIzaSyDBLj3hgiFNaW6-CVBEKLFg9847oUb_TF4" />
+
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

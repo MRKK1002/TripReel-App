@@ -920,11 +920,28 @@ const BookingDetailsScreen = () => {
                       {name}
                     </Text>
                     {days.length > 0 && (
-                      <Text
-                        style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}
-                      >
-                        {days.map(idx => `Day ${idx + 1}`).join(', ')}
-                      </Text>
+                      <View style={{ marginTop: 4, gap: 3 }}>
+                        {days.map(idx => {
+                          const sched =
+                            booking.addonSchedule?.[name]?.[idx] || {};
+                          const parts = [`Day ${idx + 1}`];
+                          if (sched.placeName)
+                            parts.push(`📍 ${sched.placeName}`);
+                          if (sched.time) parts.push(`⏰ ${sched.time}`);
+                          return (
+                            <Text
+                              key={idx}
+                              style={{
+                                fontSize: 11,
+                                color: '#6B7280',
+                                lineHeight: 15,
+                              }}
+                            >
+                              {parts.join('  •  ')}
+                            </Text>
+                          );
+                        })}
+                      </View>
                     )}
                   </View>
                 </View>

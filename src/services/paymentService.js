@@ -28,10 +28,13 @@ export const initiateRazorpayPayment = async ({
   packageId,
   batchId,
   seats,
+  adults,
+  children,
   couponCode,
   travelers,
   user,
   addonDays,
+  addonSchedule,
 }) => {
   let razorpayOrderId = null;
   let internalOrderId = null;
@@ -45,6 +48,8 @@ export const initiateRazorpayPayment = async ({
       packageId,
       batchId,
       seats,
+      adults,
+      children,
       couponCode,
       addonDays,
     });
@@ -99,9 +104,12 @@ export const initiateRazorpayPayment = async ({
       packageId,
       batchId,
       seats,
+      adults,
+      children,
       couponCode,
       travelers,
       addonDays,
+      addonSchedule,
     });
 
     return {

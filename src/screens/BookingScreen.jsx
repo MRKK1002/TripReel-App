@@ -35,6 +35,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { initiateRazorpayPayment } from '../services/paymentService';
 import AppModal from '../components/AppModal';
+import PlaceSearchInput from '../components/PlaceSearchInput';
+import TimePicker from '../components/TimePicker';
 import './../../android/app/src/utils/globalFont.js';
 
 const resolveUrl = url => {
@@ -73,6 +75,17 @@ const BookingScreen = () => {
   ]);
   // Addon day selection — { [addonName]: [dayIndex, ...] }
   const [addonDays, setAddonDays] = useState({});
+  // Per addon-day meeting schedule — { [addonName]: { [dayIdx]: { time, placeName, lat, lng } } }
+  const [addonSchedule, setAddonSchedule] = useState({});
+
+  // Update a single field of an addon-day's schedule
+  const setScheduleField = (addonName, dayIdx, patch) => {
+    setAddonSchedule(prev => {
+      const forAddon = { ...(prev[addonName] || {}) };
+      forAddon[dayIdx] = { ...(forAddon[dayIdx] || {}), ...patch };
+      return { ...prev, [addonName]: forAddon };
+    });
+  };
   // App modal (replaces Alert.alert)
   const [modal, setModal] = useState({ visible: false });
   const [couponCode, setCouponCode] = useState('');
@@ -194,8 +207,7 @@ const BookingScreen = () => {
   const adultSubtotal = adultPrice * adults;
   const childSubtotal = childPrice * children;
   const packageSubtotal = adultSubtotal + childSubtotal; // Package price only (discount applies here)
-  const subtotal = packageSubtotal + addonPrice; // Full subtotal including addons
-  const gstAmount = Math.round((subtotal * gstPercent) / 100);
+  const subtotal = packageSubtotal + addonPrice; // Full subtotal including addons (pre-GST, pre-discount)
 
   // Dynamically recalculate discount — applies only on package price, NOT addon charges
   let computedDiscount = 0;
@@ -223,7 +235,10 @@ const BookingScreen = () => {
     computedDiscount = 0;
   }
 
-  const totalAmount = subtotal + gstAmount - computedDiscount;
+  // GST is charged on the DISCOUNTED fare + addon (matches backend authoritative calc)
+  const netFare = Math.max(0, packageSubtotal - computedDiscount);
+  const gstAmount = Math.round(((netFare + addonPrice) * gstPercent) / 100);
+  const totalAmount = netFare + addonPrice + gstAmount;
 
   const seatsLeft = selectedBatch
     ? (selectedBatch.totalSeats || 0) - (selectedBatch.bookedSeats || 0)
@@ -363,6 +378,8 @@ const BookingScreen = () => {
         packageId: destination._id,
         batchId,
         seats: totalSeats,
+        adults,
+        children,
         couponCode: couponApplied ? couponCode : '',
         travelers: travelers.map(t => ({
           name: t.name || '',
@@ -371,6 +388,7 @@ const BookingScreen = () => {
         })),
         user,
         addonDays,
+        addonSchedule,
       });
 
       if (!paymentResult.success) {
@@ -654,75 +672,182 @@ const BookingScreen = () => {
                       : '(Within City)';
 
                     return (
-                      <TouchableOpacity
-                        key={idx}
-                        onPress={() => {
-                          setAddonDays(prev => {
-                            const current = prev[addon.name] || [];
-                            const updated = isSelected
-                              ? current.filter(d => d !== idx)
-                              : [...current, idx];
-                            return { ...prev, [addon.name]: updated };
-                          });
-                        }}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          paddingVertical: 10,
-                          paddingHorizontal: 12,
-                          marginBottom: 6,
-                          borderRadius: 10,
-                          borderWidth: 1.5,
-                          borderColor: isSelected ? '#1F8A70' : '#E5E7EB',
-                          backgroundColor: isSelected ? '#E6F4EF' : '#F9FAFB',
-                        }}
-                      >
-                        <View
+                      <View key={idx}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setAddonDays(prev => {
+                              const current = prev[addon.name] || [];
+                              const updated = isSelected
+                                ? current.filter(d => d !== idx)
+                                : [...current, idx];
+                              return { ...prev, [addon.name]: updated };
+                            });
+                          }}
                           style={{
-                            width: 22,
-                            height: 22,
-                            borderRadius: 4,
-                            borderWidth: 2,
-                            borderColor: isSelected ? '#1F8A70' : '#D1D5DB',
-                            backgroundColor: isSelected ? '#1F8A70' : '#fff',
+                            flexDirection: 'row',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            marginRight: 10,
+                            paddingVertical: 10,
+                            paddingHorizontal: 12,
+                            marginBottom: 6,
+                            borderRadius: 10,
+                            borderWidth: 1.5,
+                            borderColor: isSelected ? '#1F8A70' : '#E5E7EB',
+                            backgroundColor: isSelected ? '#E6F4EF' : '#F9FAFB',
                           }}
                         >
-                          {isSelected && <Check size={14} color="#fff" />}
-                        </View>
-                        <View style={{ flex: 1 }}>
+                          <View
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 4,
+                              borderWidth: 2,
+                              borderColor: isSelected ? '#1F8A70' : '#D1D5DB',
+                              backgroundColor: isSelected ? '#1F8A70' : '#fff',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginRight: 10,
+                            }}
+                          >
+                            {isSelected && <Check size={14} color="#fff" />}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text
+                              style={{
+                                fontSize: 13,
+                                fontWeight: '600',
+                                color: '#111827',
+                              }}
+                            >
+                              Day {day.day || idx + 1}:{' '}
+                              {day.title || 'Untitled'}
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                color: day.isOutsideCity
+                                  ? '#D97706'
+                                  : '#6B7280',
+                                marginTop: 2,
+                              }}
+                            >
+                              {locationLabel}
+                              {day.pickupPoint ? ` • ${day.pickupPoint}` : ''}
+                            </Text>
+                          </View>
                           <Text
                             style={{
                               fontSize: 13,
-                              fontWeight: '600',
-                              color: '#111827',
+                              fontWeight: '700',
+                              color: isSelected ? '#1F8A70' : '#374151',
                             }}
                           >
-                            Day {day.day || idx + 1}: {day.title || 'Untitled'}
+                            ₹{dayPrice.toLocaleString('en-IN')}
                           </Text>
-                          <Text
+                        </TouchableOpacity>
+
+                        {/* Schedule panel — time + meeting place for this day */}
+                        {isSelected && (
+                          <View
                             style={{
-                              fontSize: 11,
-                              color: day.isOutsideCity ? '#D97706' : '#6B7280',
-                              marginTop: 2,
+                              backgroundColor: '#fff',
+                              borderWidth: 1,
+                              borderColor: '#E6F4EF',
+                              borderRadius: 10,
+                              padding: 10,
+                              marginBottom: 10,
+                              gap: 8,
                             }}
                           >
-                            {locationLabel}
-                            {day.pickupPoint ? ` • ${day.pickupPoint}` : ''}
-                          </Text>
-                        </View>
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: '700',
-                            color: isSelected ? '#1F8A70' : '#374151',
-                          }}
-                        >
-                          ₹{dayPrice.toLocaleString('en-IN')}
-                        </Text>
-                      </TouchableOpacity>
+                            {day.isOutsideCity ? (
+                              <>
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    color: '#D97706',
+                                  }}
+                                >
+                                  📍 Meet at:{' '}
+                                  {day.pickupPoint || 'pickup point'}
+                                  {day.pickupTime
+                                    ? ` • ⏰ ${day.pickupTime}`
+                                    : ''}
+                                </Text>
+                                <Text
+                                  style={{
+                                    fontSize: 10,
+                                    color: '#9CA3AF',
+                                  }}
+                                >
+                                  Timing is set by the operator for outside-city
+                                  days.
+                                </Text>
+                              </>
+                            ) : (
+                              <>
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: '600',
+                                    color: '#6B7280',
+                                  }}
+                                >
+                                  What time should they meet you?
+                                </Text>
+                                <TimePicker
+                                  value={
+                                    addonSchedule[addon.name]?.[idx]?.time || ''
+                                  }
+                                  onChange={t =>
+                                    setScheduleField(addon.name, idx, {
+                                      time: t,
+                                    })
+                                  }
+                                  label={`Day ${day.day || idx + 1} — Time`}
+                                />
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: '600',
+                                    color: '#1F8A70',
+                                  }}
+                                >
+                                  ✨ Choose your spot (optional) — pick any
+                                  place you like
+                                </Text>
+                                <PlaceSearchInput
+                                  value={
+                                    addonSchedule[addon.name]?.[idx]?.placeName
+                                      ? {
+                                          name: addonSchedule[addon.name][idx]
+                                            .placeName,
+                                        }
+                                      : null
+                                  }
+                                  onSelect={place =>
+                                    setScheduleField(addon.name, idx, {
+                                      placeName: place.name,
+                                      lat: place.lat,
+                                      lng: place.lng,
+                                    })
+                                  }
+                                  onClear={() =>
+                                    setScheduleField(addon.name, idx, {
+                                      placeName: '',
+                                      lat: null,
+                                      lng: null,
+                                    })
+                                  }
+                                  placeholder={
+                                    day.pickupPoint
+                                      ? `Default: ${day.pickupPoint}`
+                                      : 'Search a place to meet...'
+                                  }
+                                />
+                              </>
+                            )}
+                          </View>
+                        )}
+                      </View>
                     );
                   })}
                 </View>

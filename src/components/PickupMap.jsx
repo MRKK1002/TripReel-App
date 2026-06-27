@@ -14,9 +14,9 @@ import { Home } from 'lucide-react-native';
  * Shows a home marker that smoothly animates between itinerary day pickup points.
  *
  * @param {Array} itinerary - [{ day, title, pickupPoint, pickupLat, pickupLng, isOutsideCity }]
- * @param {number} height - Map height (default 300)
+ * @param {number} height - Map height (default 360)
  */
-const PickupMap = ({ itinerary = [], height = 300 }) => {
+const PickupMap = ({ itinerary = [], height = 360 }) => {
   const mapRef = useRef(null);
 
   // Only days that have valid coordinates
